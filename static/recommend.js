@@ -1,3 +1,26 @@
+// Get backend URL from environment or use default
+const BACKEND_URL = window.location.hostname === 'localhost' 
+    ? 'http://localhost:5000' 
+    : 'https://your-render-backend.onrender.com';  // Replace with your Render URL
+
+let TMDB_API_KEY = '5ce2ef2d7c461dea5b4e04900d1c561e';  // Default fallback
+
+// Fetch API key from backend on page load
+$(document).ready(function() {
+  $.ajax({
+    type: 'GET',
+    url: BACKEND_URL + '/api/config',
+    success: function(config) {
+      if (config.tmdbApiKey) {
+        TMDB_API_KEY = config.tmdbApiKey;
+      }
+    },
+    error: function() {
+      console.log('Using default API key');
+    }
+  });
+});
+
 $(function() {
   // Button will be disabled until we type anything inside the input field
   const source = document.getElementById('autoComplete');
@@ -12,31 +35,28 @@ $(function() {
   source.addEventListener('input', inputHandler);
 
   $('.movie-button').on('click',function(){
-    var my_api_key = '5ce2ef2d7c461dea5b4e04900d1c561e';
     var title = $('.movie').val();
     if (title=="") {
       $('.results').css('display','none');
       $('.fail').css('display','block');
     }
     else{
-      load_details(my_api_key,title);
+      load_details(TMDB_API_KEY, title);
     }
   });
 });
 
 // will be invoked when clicking on the recommended movies
 function recommendcard(e){
-  var my_api_key = '5ce2ef2d7c461dea5b4e04900d1c561e';
   var title = e.getAttribute('title'); 
-  load_details(my_api_key,title);
+  load_details(TMDB_API_KEY, title);
 }
 
 // get the basic details of the movie from the API (based on the name of the movie)
-function load_details(my_api_key,title){
+function load_details(my_api_key, title){
   $.ajax({
     type: 'GET',
     url:'https://api.themoviedb.org/3/search/movie?api_key='+my_api_key+'&query='+title,
-
     success: function(movie){
       if(movie.results.length<1){
         $('.fail').css('display','block');
@@ -49,7 +69,7 @@ function load_details(my_api_key,title){
         $('.results').delay(1000).css('display','block');
         var movie_id = movie.results[0].id;
         var movie_title = movie.results[0].original_title;
-        movie_recs(movie_title,movie_id,my_api_key);
+        movie_recs(movie_title, movie_id, my_api_key);
       }
     },
     error: function(){
@@ -60,10 +80,10 @@ function load_details(my_api_key,title){
 }
 
 // passing the movie name to get the similar movies from python's flask
-function movie_recs(movie_title,movie_id,my_api_key){
+function movie_recs(movie_title, movie_id, my_api_key){
   $.ajax({
     type:'POST',
-    url:"/similarity",
+    url: BACKEND_URL + "/similarity",
     data:{'name':movie_title},
     success: function(recs){
       if(recs=="Sorry! The movie you requested is not in our database. Please check the spelling or try with some other movies"){
@@ -79,7 +99,7 @@ function movie_recs(movie_title,movie_id,my_api_key){
         for(const movie in movie_arr){
           arr.push(movie_arr[movie]);
         }
-        get_movie_details(movie_id,my_api_key,arr,movie_title);
+        get_movie_details(movie_id, my_api_key, arr, movie_title);
       }
     },
     error: function(){
@@ -90,12 +110,12 @@ function movie_recs(movie_title,movie_id,my_api_key){
 }
 
 // get all the details of the movie using the movie id.
-function get_movie_details(movie_id,my_api_key,arr,movie_title) {
+function get_movie_details(movie_id, my_api_key, arr, movie_title) {
   $.ajax({
     type:'GET',
     url:'https://api.themoviedb.org/3/movie/'+movie_id+'?api_key='+my_api_key,
     success: function(movie_details){
-      show_details(movie_details,arr,movie_title,my_api_key,movie_id);
+      show_details(movie_details, arr, movie_title, my_api_key, movie_id);
     },
     error: function(){
       alert("API Error!");
@@ -105,7 +125,7 @@ function get_movie_details(movie_id,my_api_key,arr,movie_title) {
 }
 
 // passing all the details to python's flask for displaying and scraping the movie reviews using imdb id
-function show_details(movie_details,arr,movie_title,my_api_key,movie_id){
+function show_details(movie_details, arr, movie_title, my_api_key, movie_id){
   var imdb_id = movie_details.imdb_id;
   var poster = 'https://image.tmdb.org/t/p/original'+movie_details.poster_path;
   var overview = movie_details.overview;
@@ -126,11 +146,12 @@ function show_details(movie_details,arr,movie_title,my_api_key,movie_id){
   else {
     runtime = Math.floor(runtime/60)+" hour(s) "+(runtime%60)+" min(s)"
   }
-  arr_poster = get_movie_posters(arr,my_api_key);
   
-  movie_cast = get_movie_cast(movie_id,my_api_key);
+  arr_poster = get_movie_posters(arr, my_api_key);
   
-  ind_cast = get_individual_cast(movie_cast,my_api_key);
+  movie_cast = get_movie_cast(movie_id, my_api_key);
+  
+  ind_cast = get_individual_cast(movie_cast, my_api_key);
   
   details = {
     'title':movie_title,
@@ -157,7 +178,7 @@ function show_details(movie_details,arr,movie_title,my_api_key,movie_id){
   $.ajax({
     type:'POST',
     data:details,
-    url:"/recommend",
+    url: BACKEND_URL + "/recommend",
     dataType: 'html',
     complete: function(){
       $("#loader").delay(500).fadeOut();
@@ -171,7 +192,7 @@ function show_details(movie_details,arr,movie_title,my_api_key,movie_id){
 }
 
 // get the details of individual cast
-function get_individual_cast(movie_cast,my_api_key) {
+function get_individual_cast(movie_cast, my_api_key) {
     cast_bdays = [];
     cast_bios = [];
     cast_places = [];
@@ -187,11 +208,11 @@ function get_individual_cast(movie_cast,my_api_key) {
         }
       });
     }
-    return {cast_bdays:cast_bdays,cast_bios:cast_bios,cast_places:cast_places};
+    return {cast_bdays:cast_bdays, cast_bios:cast_bios, cast_places:cast_places};
   }
 
 // getting the details of the cast for the requested movie
-function get_movie_cast(movie_id,my_api_key){
+function get_movie_cast(movie_id, my_api_key){
     cast_ids= [];
     cast_names = [];
     cast_chars = [];
@@ -222,11 +243,11 @@ function get_movie_cast(movie_id,my_api_key){
       }
     });
 
-    return {cast_ids:cast_ids,cast_names:cast_names,cast_chars:cast_chars,cast_profiles:cast_profiles};
+    return {cast_ids:cast_ids, cast_names:cast_names, cast_chars:cast_chars, cast_profiles:cast_profiles};
   }
 
 // getting posters for all the recommended movies
-function get_movie_posters(arr,my_api_key){
+function get_movie_posters(arr, my_api_key){
   var arr_poster_list = []
   for(var m in arr) {
     $.ajax({

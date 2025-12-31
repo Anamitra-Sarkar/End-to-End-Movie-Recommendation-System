@@ -114,13 +114,13 @@ except Exception as e:
 @app.route("/")
 @app.route("/home")
 def home():
-    """Health check endpoint - returns API status"""
+    """Root endpoint - returns API status and available endpoints documentation"""
     return jsonify({
         "status": "active",
         "message": "Backend is live",
         "version": "2.0.0",
         "endpoints": {
-            "health": "GET /health",
+            "health": "GET /health (lightweight keep-alive)",
             "recommendations": "POST /recommend",
             "similarity": "POST /similarity",
             "suggestions": "GET /api/suggestions"

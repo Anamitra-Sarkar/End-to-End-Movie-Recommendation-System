@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // DIRECT LINK TO HF BACKEND
-const API_BASE_URL = 'https://arko007-movie-backend.hf.space';
+const API_BASE_URL = 'https://huggingface.co/spaces/Arko007/movie-backend';
 
 export const api = axios.create({
     baseURL: API_BASE_URL,

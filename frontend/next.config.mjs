@@ -1,17 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    async rewrites() {
-        return [
-            {
-                source: '/api/:path*',
-                destination: 'http://localhost:5000/api/:path*', // Use localhost consistently
-            },
-            {
-                source: '/recommend',
-                destination: 'http://localhost:5000/recommend',
-            }
-        ]
-    },
+    // Rewrites removed - frontend now points directly to Hugging Face backend
     // Ensure we don't have issues with large posters
     images: {
         remotePatterns: [
@@ -22,6 +11,10 @@ const nextConfig = {
             {
                 protocol: 'https',
                 hostname: 'placehold.co',
+            },
+            {
+                protocol: 'https',
+                hostname: 'api.dicebear.com',
             }
         ],
     },

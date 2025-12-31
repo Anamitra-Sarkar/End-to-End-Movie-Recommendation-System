@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = ''; // Use relative path for proxy
+// DIRECT LINK TO HF BACKEND
+const API_BASE_URL = 'https://arko007-movie-backend.hf.space';
 
 export const api = axios.create({
     baseURL: API_BASE_URL,

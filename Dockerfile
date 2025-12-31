@@ -23,4 +23,7 @@ COPY . .
 EXPOSE 10000
 
 # Use gunicorn for production on port 10000
-CMD ["gunicorn", "--bind", "0.0.0.0:10000", "--workers", "2", "--timeout", "120", "app:app"]
+# --workers 1: Single worker to stay within 512MB RAM limit on free tier
+# --threads 1: Single thread to minimize memory usage
+# --timeout 0: No timeout (infinite) to handle long-running requests
+CMD ["gunicorn", "--bind", "0.0.0.0:10000", "--workers", "1", "--threads", "1", "--timeout", "0", "app:app"]

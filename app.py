@@ -1,5 +1,6 @@
 import pickle
 import os
+import gc
 import logging
 import numpy as np
 import pandas as pd
@@ -14,7 +15,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for frontend-backend communication
+# Enable CORS for Vercel frontend
+CORS(app, resources={r"/*": {"origins": "https://end-to-end-movie-recommendation-sys.vercel.app"}})
 
 # Get TMDB API key from environment variable
 TMDB_API_KEY = os.environ.get('TMDB_API_KEY')
@@ -28,6 +30,9 @@ try:
     clf = pickle.load(open("./Artifacts/nlp_model.pkl", 'rb'))
     vectorizer = pickle.load(open("./Artifacts/tranform.pkl", 'rb'))
     logger.info("Models loaded successfully")
+    # Force garbage collection to free temporary memory from pickle loading
+    gc.collect()
+    logger.info("Garbage collection completed after model loading")
 except Exception as e:
     logger.error(f"Error loading models: {e}")
     clf = None
@@ -48,6 +53,9 @@ def create_similarity():
         count_matrix = cv.fit_transform(data['comb']) 
         similarity = cosine_similarity(count_matrix)
         logger.info("Similarity matrix created successfully")
+        # Force garbage collection to free temporary memory
+        gc.collect()
+        logger.info("Garbage collection completed after similarity matrix creation")
         return data, similarity
     except Exception as e:
         logger.error(f"Error creating similarity: {e}")
@@ -92,12 +100,21 @@ def get_suggestions():
         logger.error(f"Error getting suggestions: {e}")
         return []
 
+# Initialize similarity matrix at module load time (for gunicorn workers)
+logger.info("Initializing similarity matrix at startup...")
+try:
+    create_similarity()
+    logger.info(f"Startup initialization complete. Loaded {len(data) if data is not None else 0} movies.")
+except Exception as e:
+    logger.error(f"Error during startup initialization: {e}")
+
 @app.route("/")
 @app.route("/home")
 def home():
     """Health check endpoint - returns API status"""
     return jsonify({
-        "status": "API is running",
+        "status": "active",
+        "message": "Backend is live",
         "version": "2.0.0",
         "endpoints": {
             "health": "GET /",

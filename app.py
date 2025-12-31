@@ -93,6 +93,14 @@ def get_suggestions():
         logger.error(f"Error getting suggestions: {e}")
         return []
 
+# Initialize similarity matrix at module load time (for gunicorn workers)
+logger.info("Initializing similarity matrix at startup...")
+try:
+    create_similarity()
+    logger.info(f"Startup initialization complete. Loaded {len(data) if data is not None else 0} movies.")
+except Exception as e:
+    logger.error(f"Error during startup initialization: {e}")
+
 @app.route("/")
 @app.route("/home")
 def home():

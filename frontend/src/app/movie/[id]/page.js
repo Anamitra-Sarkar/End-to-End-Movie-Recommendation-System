@@ -1,0 +1,218 @@
+"use client";
+
+import React, { useState, useEffect, use } from 'react'
+import { Star, Calendar, Clock, Play, Heart, Share2, ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
+import { motion } from 'framer-motion'
+import { getMovieDetails, getRecommendations } from '@/services/api'
+import MovieCard from '@/components/MovieCard'
+import { cn } from '@/lib/utils'
+
+export default function MovieDetailsPage({ params }) {
+    // Unwrap params for Next.js 15+ compatibility
+    const resolvedParams = use(params);
+    const id = resolvedParams.id;
+
+    const [movie, setMovie] = useState(null)
+    const [recommendations, setRecommendations] = useState([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
+    const [isWatchlisted, setIsWatchlisted] = useState(false)
+
+    useEffect(() => {
+        if (!id) return;
+
+        fetchData();
+        // Check watchlist
+        const saved = JSON.parse(localStorage.getItem('watchlist') || '[]');
+        setIsWatchlisted(saved.some(m => m.id === parseInt(id)));
+    }, [id])
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            // 1. Get Details
+            const details = await getMovieDetails(id);
+            setMovie(details);
+
+            // 2. Get Recommendations based on title
+            if (details.title) {
+                const recData = await getRecommendations(details.title);
+                if (recData.movies && recData.posters) {
+                    // Map arrays to objects for MovieCard
+                    const recs = recData.movies.map((title, i) => ({
+                        id: 0,
+                        title: title,
+                        poster: recData.posters[i],
+                        rating: 0,
+                        year: 0,
+                        genre: 'Recommendation'
+                    }));
+                    setRecommendations(recs);
+                }
+            }
+        } catch (err) {
+            console.error(err);
+            setError("Failed to monitor transmission.");
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    const toggleWatchlist = () => {
+        if (!movie) return;
+
+        const saved = JSON.parse(localStorage.getItem('watchlist') || '[]');
+        let newWatchlist;
+
+        if (isWatchlisted) {
+            newWatchlist = saved.filter(m => m.id !== parseInt(id));
+        } else {
+            const simpleMovie = {
+                id: movie.id,
+                title: movie.title,
+                poster: movie.poster,
+                rating: movie.rating,
+                genre: movie.genres[0] || 'Movie',
+                year: movie.year
+            };
+            newWatchlist = [...saved, simpleMovie];
+        }
+
+        localStorage.setItem('watchlist', JSON.stringify(newWatchlist));
+        setIsWatchlisted(!isWatchlisted);
+        window.dispatchEvent(new Event('storage'));
+    }
+
+    if (loading) return (
+        <div className="min-h-screen flex items-center justify-center">
+            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        </div>
+    )
+
+    if (error || !movie) return (
+        <div className="min-h-screen flex flex-col items-center justify-center text-text-secondary">
+            <h1 className="text-2xl font-bold mb-4">Signal Lost</h1>
+            <Link href="/" className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">Return to Base</Link>
+        </div>
+    )
+
+    return (
+        <div className="min-h-full pb-20">
+            {/* Hero Backdrop */}
+            <div className="relative h-[70vh] w-full overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent z-10" />
+                <div className="absolute inset-0 bg-gradient-to-r from-background via-background/40 to-transparent z-10" />
+                <img
+                    src={movie.poster ? movie.poster.replace('w500', 'original') : "https://placehold.co/1920x1080?text=No+Backdrop"}
+                    alt={movie.title}
+                    className="w-full h-full object-cover opacity-60"
+                />
+
+                <div className="absolute inset-0 z-20 flex items-center px-8 md:px-16">
+                    <div className="max-w-3xl pt-20">
+                        <Link href="/" className="inline-flex items-center gap-2 text-text-secondary hover:text-white mb-6 transition-colors">
+                            <ArrowLeft size={20} /> Back to Browse
+                        </Link>
+
+                        <motion.h1
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="text-5xl md:text-7xl font-black text-white mb-4 leading-tight tracking-tight"
+                        >
+                            {movie.title}
+                        </motion.h1>
+
+                        <div className="flex items-center flex-wrap gap-4 text-sm md:text-base text-gray-300 mb-8 font-medium">
+                            <span className="flex items-center gap-1 bg-yellow-500/10 text-yellow-500 px-3 py-1 rounded-full border border-yellow-500/20">
+                                <Star size={16} fill="currentColor" /> {movie.rating.toFixed(1)}
+                            </span>
+                            <span className="flex items-center gap-1">
+                                <Calendar size={16} /> {movie.year}
+                            </span>
+                            <span className="flex items-center gap-1">
+                                <Clock size={16} /> {movie.runtime}m
+                            </span>
+                            {movie.genres.map(g => (
+                                <span key={g} className="px-3 py-1 bg-white/10 rounded-full text-xs md:text-sm">{g}</span>
+                            ))}
+                        </div>
+
+                        <p className="text-lg text-gray-300 mb-10 leading-relaxed max-w-2xl line-clamp-4">
+                            {movie.overview}
+                        </p>
+
+                        <div className="flex items-center gap-4">
+                            <button className="flex items-center gap-3 px-8 py-4 bg-primary hover:bg-primary/90 text-white rounded-2xl font-bold text-lg transition-transform active:scale-95 shadow-lg shadow-primary/25">
+                                <Play fill="currentColor" /> Watch Now
+                            </button>
+                            <button
+                                onClick={toggleWatchlist}
+                                className={cn("p-4 rounded-2xl border-2 transition-all active:scale-95", isWatchlisted ? "bg-red-500 border-red-500 text-white" : "border-white/20 text-white hover:bg-white/10")}
+                            >
+                                <Heart fill={isWatchlisted ? "currentColor" : "none"} />
+                            </button>
+                            <button className="p-4 rounded-2xl border-2 border-white/20 text-white hover:bg-white/10 transition-all active:scale-95">
+                                <Share2 />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Content & Recommendations */}
+            <div className="px-8 md:px-16 -mt-10 relative z-30">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+                    {/* Details Column */}
+                    <div className="lg:col-span-2 space-y-12">
+                        {/* Cast */}
+                        <section>
+                            <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                                <div className="w-1 h-8 bg-primary rounded-full" /> Top Cast
+                            </h3>
+                            <div className="flex flex-wrap gap-4">
+                                <div className="p-4 bg-card rounded-xl border border-white/5">
+                                    <p className="text-text-secondary italic">Cast information coming soon via data pipeline update.</p>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* Recommendations */}
+                        <section>
+                            <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                                <div className="w-1 h-8 bg-primary rounded-full" /> More Like This
+                            </h3>
+                            {recommendations.length > 0 ? (
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                                    {recommendations.slice(0, 6).map((rec, i) => (
+                                        <MovieCard key={i} {...rec} />
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-text-secondary">Generating AI recommendations...</p>
+                            )}
+                        </section>
+                    </div>
+
+                    {/* Meta Sidebar */}
+                    <div className="space-y-6">
+                        <div className="bg-card p-6 rounded-3xl border border-white/5 space-y-6">
+                            <div>
+                                <h4 className="text-text-secondary text-sm font-bold uppercase tracking-wider mb-2">Director</h4>
+                                <p className="text-white font-medium text-lg">{movie.director}</p>
+                            </div>
+                            <div>
+                                <h4 className="text-text-secondary text-sm font-bold uppercase tracking-wider mb-2">Tagline</h4>
+                                <p className="text-white italic">"{movie.tagline}"</p>
+                            </div>
+                            <div>
+                                <h4 className="text-text-secondary text-sm font-bold uppercase tracking-wider mb-2">Status</h4>
+                                <p className="text-primary font-bold">Released</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}

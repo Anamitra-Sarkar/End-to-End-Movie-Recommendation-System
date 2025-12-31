@@ -12,14 +12,15 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Download NLTK data
-RUN python -c "import nltk; nltk.download('stopwords')"
+# Copy NLTK setup script and run it
+COPY nltk_setup.py .
+RUN python nltk_setup.py
 
 # Copy application code
 COPY . .
 
 # Expose port
-EXPOSE 5000
+EXPOSE 10000
 
-# Use gunicorn for production
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "app:app"]
+# Use gunicorn for production on port 10000
+CMD ["gunicorn", "--bind", "0.0.0.0:10000", "--workers", "2", "--timeout", "120", "app:app"]

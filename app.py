@@ -15,8 +15,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-# Enable CORS for Vercel frontend
-CORS(app, resources={r"/*": {"origins": "https://end-to-end-movie-recommendation-sys.vercel.app"}})
+# Allow Vercel and Localhost (for testing)
+CORS(app, resources={r"/*": {"origins": [
+    "https://end-to-end-movie-recommendation-sys.vercel.app",
+    "http://localhost:3000"
+]}})
 
 # Get TMDB API key from environment variable
 TMDB_API_KEY = os.environ.get('TMDB_API_KEY')
@@ -111,18 +114,23 @@ except Exception as e:
 @app.route("/")
 @app.route("/home")
 def home():
-    """Health check endpoint - returns API status"""
+    """Root endpoint - returns API status and available endpoints documentation"""
     return jsonify({
         "status": "active",
         "message": "Backend is live",
         "version": "2.0.0",
         "endpoints": {
-            "health": "GET /",
+            "health": "GET /health (lightweight keep-alive)",
             "recommendations": "POST /recommend",
             "similarity": "POST /similarity",
             "suggestions": "GET /api/suggestions"
         }
     })
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Lightweight keep-alive endpoint for uptime monitoring"""
+    return jsonify({"status": "active", "platform": "Hugging Face Spaces"}), 200
 
 @app.route("/api/suggestions", methods=["GET"])
 def get_suggestions_api():

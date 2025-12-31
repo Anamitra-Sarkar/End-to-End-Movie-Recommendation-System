@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Recommendation System</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        /* Animated background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: 
+                radial-gradient(ellipse at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(255, 119, 115, 0.2) 0%, transparent 50%),
+                radial-gradient(ellipse at 40% 40%, rgba(85, 107, 255, 0.2) 0%, transparent 50%);
+            animation: pulse 8s ease-in-out infinite alternate;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.8; transform: scale(1); }
+            100% { opacity: 1; transform: scale(1.05); }
+        }
+        
+        /* Glassmorphism card */
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        
+        .glass-dark {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Glowing search bar */
+        .search-glow {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .search-glow:focus-within {
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.5), 0 0 60px rgba(139, 92, 246, 0.3);
+        }
+        
+        .search-input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .search-input:focus {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(139, 92, 246, 0.6);
+            outline: none;
+        }
+        
+        .search-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        /* Movie card hover effect */
+        .movie-card {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        .movie-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+        
+        .movie-card img {
+            transition: all 0.3s ease;
+        }
+        
+        .movie-card:hover img {
+            filter: brightness(1.1);
+        }
+        
+        /* Loading spinner */
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left-color: #8b5cf6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Gradient text */
+        .gradient-text {
+            background: linear-gradient(135deg, #a855f7 0%, #ec4899 50%, #f97316 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* Button styles */
+        .btn-primary {
+            background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #a855f7 0%, #c084fc 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.4);
+        }
+        
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        
+        /* Autocomplete dropdown */
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 50;
+        }
+        
+        .autocomplete-item {
+            transition: all 0.2s ease;
+        }
+        
+        .autocomplete-item:hover {
+            background: rgba(139, 92, 246, 0.3);
+        }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(139, 92, 246, 0.5);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(139, 92, 246, 0.7);
+        }
+    </style>
+</head>
+<body class="text-white">
+    <!-- Animated background -->
+    <div class="bg-animation"></div>
+    
+    <!-- Main Container -->
+    <div class="container mx-auto px-4 py-8 min-h-screen flex flex-col">
+        
+        <!-- Header -->
+        <header class="text-center mb-12 pt-8">
+            <h1 class="text-5xl md:text-6xl font-bold mb-4">
+                <span class="gradient-text">Movie Recommendations</span>
+            </h1>
+            <p class="text-gray-300 text-lg md:text-xl max-w-2xl mx-auto">
+                Discover your next favorite movie with our AI-powered recommendation engine
+            </p>
+        </header>
+        
+        <!-- Search Section -->
+        <div class="max-w-3xl mx-auto w-full mb-16">
+            <div class="search-glow glass rounded-2xl p-2">
+                <div class="flex flex-col md:flex-row gap-4">
+                    <div class="relative flex-1">
+                        <input 
+                            type="text" 
+                            id="movieSearch" 
+                            class="search-input w-full px-6 py-4 rounded-xl text-lg text-white"
+                            placeholder="Enter a movie title (e.g., Inception)"
+                            autocomplete="off"
+                        >
+                        <!-- Autocomplete dropdown -->
+                        <div id="autocomplete" class="autocomplete-dropdown glass-dark rounded-xl hidden"></div>
+                    </div>
+                    <button 
+                        id="searchBtn"
+                        class="btn-primary px-8 py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-2"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <span>Search</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Loading State -->
+        <div id="loading" class="hidden flex flex-col items-center justify-center py-20">
+            <div class="spinner mb-4"></div>
+            <p class="text-gray-300 text-lg">Finding recommendations...</p>
+        </div>
+        
+        <!-- Error State -->
+        <div id="error" class="hidden max-w-2xl mx-auto">
+            <div class="glass rounded-2xl p-8 text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <h3 class="text-xl font-semibold mb-2">Movie Not Found</h3>
+                <p id="errorMessage" class="text-gray-300">Sorry, we couldn't find that movie. Please check the spelling or try another title.</p>
+            </div>
+        </div>
+        
+        <!-- Results Section -->
+        <div id="results" class="hidden">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold mb-2">
+                    Recommendations for "<span id="queryTitle" class="gradient-text"></span>"
+                </h2>
+                <p class="text-gray-300">Here are 10 movies you might enjoy</p>
+            </div>
+            
+            <!-- Movie Grid -->
+            <div id="movieGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                <!-- Movies will be dynamically inserted here -->
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <footer class="mt-auto pt-16 pb-8 text-center">
+            <p class="text-gray-400 text-sm">
+                Powered by <span class="font-semibold">Machine Learning</span> &bull; 
+                Data from <span class="font-semibold">TMDB</span>
+            </p>
+        </footer>
+    </div>
+    
+    <script>
+        // API Configuration - Replace with your Render backend URL
+        const API_URL = "PLACEHOLDER_URL";
+        
+        // TMDB Configuration
+        const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
+        let TMDB_API_KEY = null;
+        
+        // Movie suggestions for autocomplete
+        let movieSuggestions = [];
+        
+        // DOM Elements
+        const searchInput = document.getElementById('movieSearch');
+        const searchBtn = document.getElementById('searchBtn');
+        const autocomplete = document.getElementById('autocomplete');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const errorMessage = document.getElementById('errorMessage');
+        const results = document.getElementById('results');
+        const queryTitle = document.getElementById('queryTitle');
+        const movieGrid = document.getElementById('movieGrid');
+        
+        // Initialize - Fetch config and suggestions
+        async function init() {
+            try {
+                // Fetch TMDB API key
+                const configRes = await fetch(`${API_URL}/api/config`);
+                if (configRes.ok) {
+                    const config = await configRes.json();
+                    TMDB_API_KEY = config.tmdbApiKey;
+                }
+                
+                // Fetch movie suggestions
+                const suggestionsRes = await fetch(`${API_URL}/api/suggestions`);
+                if (suggestionsRes.ok) {
+                    const data = await suggestionsRes.json();
+                    movieSuggestions = data.suggestions || [];
+                }
+            } catch (err) {
+                console.error('Failed to initialize:', err);
+            }
+        }
+        
+        // Autocomplete functionality
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            
+            if (query.length < 2) {
+                autocomplete.classList.add('hidden');
+                return;
+            }
+            
+            const matches = movieSuggestions
+                .filter(movie => movie.toLowerCase().includes(query))
+                .slice(0, 8);
+            
+            if (matches.length === 0) {
+                autocomplete.classList.add('hidden');
+                return;
+            }
+            
+            autocomplete.innerHTML = matches.map(movie => `
+                <div class="autocomplete-item px-4 py-3 cursor-pointer text-white border-b border-white/10 last:border-0">
+                    ${movie}
+                </div>
+            `).join('');
+            
+            autocomplete.classList.remove('hidden');
+            
+            // Add click handlers
+            autocomplete.querySelectorAll('.autocomplete-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    searchInput.value = item.textContent.trim();
+                    autocomplete.classList.add('hidden');
+                    performSearch();
+                });
+            });
+        });
+        
+        // Hide autocomplete when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !autocomplete.contains(e.target)) {
+                autocomplete.classList.add('hidden');
+            }
+        });
+        
+        // Search on button click
+        searchBtn.addEventListener('click', performSearch);
+        
+        // Search on Enter key
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                autocomplete.classList.add('hidden');
+                performSearch();
+            }
+        });
+        
+        // Perform search
+        async function performSearch() {
+            const query = searchInput.value.trim();
+            
+            if (!query) {
+                return;
+            }
+            
+            // Show loading
+            showLoading();
+            
+            try {
+                // Get recommendations from backend
+                const response = await fetch(`${API_URL}/recommend`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ movie_title: query })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    showError(data.error || 'Failed to get recommendations');
+                    return;
+                }
+                
+                // Fetch posters from TMDB
+                const moviesWithPosters = await fetchPosters(data.movies);
+                
+                // Display results
+                displayResults(query, moviesWithPosters);
+                
+            } catch (err) {
+                console.error('Search error:', err);
+                showError('Failed to connect to the server. Please try again.');
+            }
+        }
+        
+        // Fetch movie posters from TMDB
+        async function fetchPosters(movies) {
+            if (!TMDB_API_KEY) {
+                return movies.map(title => ({ title, poster: null }));
+            }
+            
+            const promises = movies.map(async (title) => {
+                try {
+                    const response = await fetch(
+                        `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(title)}`
+                    );
+                    const data = await response.json();
+                    
+                    if (data.results && data.results.length > 0) {
+                        const poster = data.results[0].poster_path 
+                            ? `${TMDB_IMAGE_BASE}${data.results[0].poster_path}`
+                            : null;
+                        return { title, poster };
+                    }
+                    return { title, poster: null };
+                } catch {
+                    return { title, poster: null };
+                }
+            });
+            
+            return Promise.all(promises);
+        }
+        
+        // Display results
+        function displayResults(query, movies) {
+            hideAll();
+            
+            queryTitle.textContent = query;
+            
+            movieGrid.innerHTML = movies.map(movie => `
+                <div class="movie-card glass rounded-xl overflow-hidden cursor-pointer" onclick="searchMovie('${movie.title.replace(/'/g, "\\'")}')">
+                    <div class="aspect-[2/3] bg-gray-800 relative overflow-hidden">
+                        ${movie.poster 
+                            ? `<img src="${movie.poster}" alt="${movie.title}" class="w-full h-full object-cover">`
+                            : `<div class="w-full h-full flex items-center justify-center text-gray-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+                                </svg>
+                              </div>`
+                        }
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-semibold text-sm md:text-base line-clamp-2">${movie.title}</h3>
+                    </div>
+                </div>
+            `).join('');
+            
+            results.classList.remove('hidden');
+        }
+        
+        // Search for a specific movie (when clicking on recommendation)
+        function searchMovie(title) {
+            searchInput.value = title;
+            performSearch();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
+        // Show loading state
+        function showLoading() {
+            hideAll();
+            loading.classList.remove('hidden');
+        }
+        
+        // Show error state
+        function showError(message) {
+            hideAll();
+            errorMessage.textContent = message;
+            error.classList.remove('hidden');
+        }
+        
+        // Hide all states
+        function hideAll() {
+            loading.classList.add('hidden');
+            error.classList.add('hidden');
+            results.classList.add('hidden');
+        }
+        
+        // Initialize on page load
+        init();
+    </script>
+</body>
+</html>

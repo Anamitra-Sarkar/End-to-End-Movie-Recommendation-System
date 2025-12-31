@@ -23,7 +23,7 @@ COPY . .
 EXPOSE 10000
 
 # Use gunicorn for production on port 10000
-# --preload: Load application code before worker processes are forked (shares memory for similarity matrix)
-# --timeout 300: Allow up to 5 minutes for requests (initial cold start can be slow)
-# --workers 2: Use 2 worker processes for handling requests
-CMD ["gunicorn", "--bind", "0.0.0.0:10000", "--workers", "2", "--timeout", "300", "--preload", "app:app"]
+# --workers 1: Single worker to stay within 512MB RAM limit on free tier
+# --threads 1: Single thread to minimize memory usage
+# --timeout 0: No timeout (infinite) to handle long-running requests
+CMD ["gunicorn", "--bind", "0.0.0.0:10000", "--workers", "1", "--threads", "1", "--timeout", "0", "app:app"]

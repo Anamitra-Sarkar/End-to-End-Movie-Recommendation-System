@@ -1,5 +1,6 @@
 import pickle
 import os
+import gc
 import logging
 import numpy as np
 import pandas as pd
@@ -29,6 +30,9 @@ try:
     clf = pickle.load(open("./Artifacts/nlp_model.pkl", 'rb'))
     vectorizer = pickle.load(open("./Artifacts/tranform.pkl", 'rb'))
     logger.info("Models loaded successfully")
+    # Force garbage collection to free temporary memory from pickle loading
+    gc.collect()
+    logger.info("Garbage collection completed after model loading")
 except Exception as e:
     logger.error(f"Error loading models: {e}")
     clf = None
@@ -49,6 +53,9 @@ def create_similarity():
         count_matrix = cv.fit_transform(data['comb']) 
         similarity = cosine_similarity(count_matrix)
         logger.info("Similarity matrix created successfully")
+        # Force garbage collection to free temporary memory
+        gc.collect()
+        logger.info("Garbage collection completed after similarity matrix creation")
         return data, similarity
     except Exception as e:
         logger.error(f"Error creating similarity: {e}")

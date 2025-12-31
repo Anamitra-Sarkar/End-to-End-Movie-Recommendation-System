@@ -1,3 +1,14 @@
+---
+title: Movie Recommendation API
+emoji: 🎬
+colorFrom: indigo
+colorTo: pink
+sdk: docker
+app_port: 7860
+---
+# Movie Recommendation Backend
+Powered by Flask & Scikit-Learn. Deployed on Hugging Face Spaces.
+
 # Movie-Recommendation-System
 
 # About this Project

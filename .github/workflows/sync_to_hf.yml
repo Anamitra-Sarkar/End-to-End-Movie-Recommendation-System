@@ -9,24 +9,23 @@ jobs:
   sync-to-hub:
     runs-on: ubuntu-latest
     steps:
-      # 1. Checkout the code
+      # 1. Checkout code
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
           lfs: true
 
-      # 2. Install the Official Hugging Face CLI
+      # 2. Install Python Dependencies
       - name: Install Hugging Face Hub
-        run: pip install huggingface_hub
+        run: pip install -U huggingface_hub
 
-      # 3. Upload files using the CLI (Handles LFS automatically)
+      # 3. Upload using Python Module (Bypasses "command not found" error)
       - name: Push to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # Login using the token
-          huggingface-cli login --token $HF_TOKEN
+          # Use the Python module directly
+          python -m huggingface_hub.cli login --token $HF_TOKEN
           
-          # Upload the entire current directory (.) to the remote root (.)
-          # --repo-type space: Tells it we are deploying an App, not a Model
-          huggingface-cli upload Arko007/movie-backend . . --repo-type space --exclude ".git/*" ".github/*"
+          # Upload command
+          python -m huggingface_hub.cli upload Arko007/movie-backend . . --repo-type space --exclude ".git/*" ".github/*"

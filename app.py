@@ -3,6 +3,7 @@ import os
 import logging
 import numpy as np
 import pandas as pd
+import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from sklearn.metrics.pairwise import cosine_similarity
@@ -102,23 +103,9 @@ def home():
             "health": "GET /",
             "recommendations": "POST /recommend",
             "similarity": "POST /similarity",
-            "suggestions": "GET /api/suggestions",
-            "config": "GET /api/config"
+            "suggestions": "GET /api/suggestions"
         }
     })
-
-@app.route("/api/config", methods=["GET"])
-def get_config():
-    """API endpoint to get configuration (like TMDB API key)"""
-    if not TMDB_API_KEY:
-        return jsonify({
-            'error': 'TMDB_API_KEY not configured',
-            'tmdbApiKey': None
-        }), 503
-    return jsonify({
-        'tmdbApiKey': TMDB_API_KEY
-    })
-
 
 @app.route("/api/suggestions", methods=["GET"])
 def get_suggestions_api():
@@ -127,6 +114,25 @@ def get_suggestions_api():
     return jsonify({
         'suggestions': suggestions
     })
+
+
+def fetch_poster(movie_title):
+    """Fetch movie poster URL from TMDB API (server-side)"""
+    if not TMDB_API_KEY:
+        return None
+    try:
+        url = f"https://api.themoviedb.org/3/search/movie?api_key={TMDB_API_KEY}&query={movie_title}"
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('results') and len(data['results']) > 0:
+                poster_path = data['results'][0].get('poster_path')
+                if poster_path:
+                    return f"https://image.tmdb.org/t/p/w500{poster_path}"
+        return None
+    except Exception as e:
+        logger.error(f"Error fetching poster for {movie_title}: {e}")
+        return None
 
 @app.route("/similarity", methods=["POST"])
 def similarity_route():
@@ -179,14 +185,19 @@ def recommend():
             # Error message or not found
             return jsonify({'error': rc}), 404
         
-        # Build response with movie titles and placeholder for posters
-        # Note: Posters are fetched client-side via TMDB API
+        # Build response with movie titles
         movies = rc
         
-        # Return the recommendations
+        # Fetch posters server-side to avoid exposing API key to frontend
+        posters = []
+        for movie in movies:
+            poster = fetch_poster(movie)
+            posters.append(poster)
+        
+        # Return the recommendations with posters
         return jsonify({
             'movies': movies,
-            'posters': [],  # Posters are fetched client-side via TMDB API
+            'posters': posters,
             'query': movie_title,
             'count': len(movies)
         })

@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+  # Allows you to run this manually from the Actions tab for testing
+  workflow_dispatch:
 
 jobs:
   sync:
@@ -18,10 +20,10 @@ jobs:
           lfs: true
 
       - name: Sync to Hugging Face Space
-        uses: nateraw/huggingface-sync-action@v1
+        # 👇 THIS IS THE FIX (Changed v1 to v0.0.5)
+        uses: nateraw/huggingface-sync-action@v0.0.5
         with:
           github_repo_id: ${{ github.repository }}
           huggingface_repo_id: Arko007/movie-backend
           repo_type: space
-          token: ${{ secrets.HF_TOKEN }}
-          lfs: true
+          hf_token: ${{ secrets.HF_TOKEN }}

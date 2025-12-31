@@ -3,31 +3,30 @@ name: Sync to Hugging Face Space
 on:
   push:
     branches: [main]
-  # Allows manual triggering
   workflow_dispatch:
 
 jobs:
   sync-to-hub:
     runs-on: ubuntu-latest
     steps:
-      # 1. Download your code (with Large Files)
+      # 1. Checkout the code
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
           lfs: true
 
-      # 2. Push directly to Hugging Face using Git
+      # 2. Install the Official Hugging Face CLI
+      - name: Install Hugging Face Hub
+        run: pip install huggingface_hub
+
+      # 3. Upload files using the CLI (Handles LFS automatically)
       - name: Push to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # Configure Git user
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
+          # Login using the token
+          huggingface-cli login --token $HF_TOKEN
           
-          # Add Hugging Face as a remote repository
-          # Note: We use the token in the URL for authentication
-          git remote add space https://Arko007:$HF_TOKEN@huggingface.co/spaces/Arko007/movie-backend
-          
-          # Force push to sync everything
-          git push --force space main
+          # Upload the entire current directory (.) to the remote root (.)
+          # --repo-type space: Tells it we are deploying an App, not a Model
+          huggingface-cli upload Arko007/movie-backend . . --repo-type space --exclude ".git/*" ".github/*"

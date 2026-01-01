@@ -27,14 +27,11 @@ const MovieCard = ({ id, title, poster, rating, genre, year }) => {
                     const inWatchlist = await isInWatchlist(user.uid, id)
                     setIsWatchlisted(inWatchlist)
                 } catch (error) {
-                    // Fallback to localStorage if Firebase not configured
-                    const saved = JSON.parse(localStorage.getItem('watchlist') || '[]');
-                    setIsWatchlisted(saved.some(m => m.id === id));
+                    console.error('Error checking watchlist:', error)
+                    setIsWatchlisted(false)
                 }
             } else {
-                // Fallback to localStorage
-                const saved = JSON.parse(localStorage.getItem('watchlist') || '[]');
-                setIsWatchlisted(saved.some(m => m.id === id));
+                setIsWatchlisted(false)
             }
         }
         checkWatchlist()
@@ -52,65 +49,31 @@ const MovieCard = ({ id, title, poster, rating, genre, year }) => {
         e.preventDefault();
 
         if (isUpdating) return;
+        
+        // Require login for watchlist functionality
+        if (!user?.uid) {
+            showNotification('Please sign in to use the watchlist feature', 'info');
+            return;
+        }
+
         setIsUpdating(true);
 
         const movie = { id, title, poster, rating, genre, year };
 
         try {
-            if (user?.uid) {
-                // Use Firebase Firestore
-                if (isWatchlisted) {
-                    await removeFromWatchlist(user.uid, id);
-                    showNotification(`${title} removed from Watchlist`, 'info');
-                } else {
-                    await addToWatchlist(user.uid, movie);
-                    showNotification(`${title} added to Watchlist! 🎬`, 'success');
-                    // Trigger smart notification for bell icon
-                    triggerWatchlistAdd(title);
-                    // Check for milestones (we'll estimate count)
-                    const saved = JSON.parse(localStorage.getItem('watchlist') || '[]');
-                    checkMilestones(saved.length + 1);
-                }
-                setIsWatchlisted(!isWatchlisted);
+            if (isWatchlisted) {
+                await removeFromWatchlist(user.uid, id);
+                showNotification(`${title} removed from Watchlist`, 'info');
+                setIsWatchlisted(false);
             } else {
-                // Fallback to localStorage
-                const saved = JSON.parse(localStorage.getItem('watchlist') || '[]');
-                let newWatchlist;
-
-                if (isWatchlisted) {
-                    newWatchlist = saved.filter(m => m.id !== id);
-                    showNotification(`${title} removed from Watchlist`, 'info');
-                } else {
-                    newWatchlist = [...saved, movie];
-                    showNotification(`${title} added to Watchlist! 🎬`, 'success');
-                    // Trigger smart notification for bell icon
-                    triggerWatchlistAdd(title);
-                    // Check for milestones
-                    checkMilestones(newWatchlist.length);
-                }
-
-                localStorage.setItem('watchlist', JSON.stringify(newWatchlist));
-                setIsWatchlisted(!isWatchlisted);
-                window.dispatchEvent(new Event('storage'));
+                await addToWatchlist(user.uid, movie);
+                showNotification(`${title} added to Watchlist! 🎬`, 'success');
+                triggerWatchlistAdd(title);
+                setIsWatchlisted(true);
             }
         } catch (error) {
             console.error('Watchlist error:', error);
-            // Fallback to localStorage on error
-            const saved = JSON.parse(localStorage.getItem('watchlist') || '[]');
-            let newWatchlist;
-
-            if (isWatchlisted) {
-                newWatchlist = saved.filter(m => m.id !== id);
-            } else {
-                newWatchlist = [...saved, movie];
-                triggerWatchlistAdd(title);
-                checkMilestones(newWatchlist.length);
-            }
-
-            localStorage.setItem('watchlist', JSON.stringify(newWatchlist));
-            setIsWatchlisted(!isWatchlisted);
-            window.dispatchEvent(new Event('storage'));
-            showNotification(isWatchlisted ? 'Removed from Watchlist' : 'Added to Watchlist (offline)', 'info');
+            showNotification('Failed to update watchlist. Please try again.', 'error');
         } finally {
             setIsUpdating(false);
         }

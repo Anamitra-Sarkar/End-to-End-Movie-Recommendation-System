@@ -7,6 +7,8 @@ import {
     getDoc,
     query,
     orderBy,
+    onSnapshot,
+    Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -57,4 +59,36 @@ export async function isInWatchlist(userId: string, movieId: number): Promise<bo
     const docRef = doc(db, 'users', userId, 'watchlist', String(movieId));
     const docSnap = await getDoc(docRef);
     return docSnap.exists();
+}
+
+// Real-time listener for watchlist updates
+export function subscribeToWatchlist(
+    userId: string,
+    callback: (movies: WatchlistMovie[]) => void,
+    onError?: (error: Error) => void
+): Unsubscribe {
+    if (!db) {
+        const error = new Error('Firestore not initialized');
+        if (onError) onError(error);
+        return () => {};
+    }
+    
+    const watchlistRef = collection(db, 'users', userId, 'watchlist');
+    const q = query(watchlistRef, orderBy('addedAt', 'desc'));
+    
+    return onSnapshot(
+        q,
+        (snapshot) => {
+            const movies = snapshot.docs.map((doc) => ({
+                ...doc.data(),
+                id: parseInt(doc.id, 10),
+                addedAt: doc.data().addedAt?.toDate() || new Date(),
+            })) as WatchlistMovie[];
+            callback(movies);
+        },
+        (error) => {
+            console.error('Watchlist subscription error:', error);
+            if (onError) onError(error);
+        }
+    );
 }

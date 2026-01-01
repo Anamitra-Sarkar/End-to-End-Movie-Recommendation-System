@@ -104,7 +104,7 @@ export default function MovieDashboard({
                     const recData = await getRecommendations(lastViewed.title);
                     if (recData.movies && recData.posters && recData.movies.length > 0) {
                         const recs = recData.movies.map((title, i) => ({
-                            id: i,
+                            id: `rec-${i}-${Date.now()}`,
                             title: title,
                             poster: recData.posters[i],
                             rating: 0,

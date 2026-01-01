@@ -4,13 +4,14 @@ import React, { useState, useEffect } from 'react'
 import { MessageCircle, Star, Heart, Reply, Users, Send, Loader2 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useNotification } from '@/context/NotificationContext'
+import { subscribeToCommunityPosts, addCommunityPost } from '@/lib/community'
 
 const MOCK_REVIEWS = [
-    { id: 1, user: "CinephileMax", avatar: "🎬", movie: "Inception", rating: 5, content: "Mind-bending masterpiece! Nolan outdid himself.", likes: 234, replies: 45, createdAt: new Date().toISOString() },
-    { id: 2, user: "MovieBuff_Sarah", avatar: "🍿", movie: "The Dark Knight", rating: 5, content: "Heath Ledger's Joker is legendary. Best villain ever.", likes: 567, replies: 89, createdAt: new Date().toISOString() },
-    { id: 3, user: "FilmCritic101", avatar: "🎥", movie: "Interstellar", rating: 4, content: "Visually stunning. The docking scene had me on edge!", likes: 189, replies: 32, createdAt: new Date().toISOString() },
-    { id: 4, user: "AnimeKing", avatar: "🌸", movie: "Spirited Away", rating: 5, content: "Studio Ghibli magic at its finest. A timeless classic.", likes: 445, replies: 67, createdAt: new Date().toISOString() },
-    { id: 5, user: "ActionJunkie", avatar: "💥", movie: "Avatar", rating: 4, content: "Pandora is breathtaking. Can't wait for the sequels!", likes: 312, replies: 48, createdAt: new Date().toISOString() },
+    { id: 1, user: "CinephileMax", avatar: "🎬", movie: "Inception", rating: 5, content: "Mind-bending masterpiece! Nolan outdid himself.", likes: 234, replies: 45, createdAt: new Date() },
+    { id: 2, user: "MovieBuff_Sarah", avatar: "🍿", movie: "The Dark Knight", rating: 5, content: "Heath Ledger's Joker is legendary. Best villain ever.", likes: 567, replies: 89, createdAt: new Date() },
+    { id: 3, user: "FilmCritic101", avatar: "🎥", movie: "Interstellar", rating: 4, content: "Visually stunning. The docking scene had me on edge!", likes: 189, replies: 32, createdAt: new Date() },
+    { id: 4, user: "AnimeKing", avatar: "🌸", movie: "Spirited Away", rating: 5, content: "Studio Ghibli magic at its finest. A timeless classic.", likes: 445, replies: 67, createdAt: new Date() },
+    { id: 5, user: "ActionJunkie", avatar: "💥", movie: "Avatar", rating: 4, content: "Pandora is breathtaking. Can't wait for the sequels!", likes: 312, replies: 48, createdAt: new Date() },
 ];
 
 export default function CommunityPage() {
@@ -23,27 +24,28 @@ export default function CommunityPage() {
     const { showNotification } = useNotification()
 
     useEffect(() => {
-        fetchPosts()
-    }, [])
-
-    const fetchPosts = async () => {
-        setIsLoading(true)
-        try {
-            const res = await fetch('/api/community')
-            const data = await res.json()
-            if (data.posts && data.posts.length > 0) {
-                setPosts(data.posts)
-            } else {
-                // Use mock data if no posts from API
+        // Subscribe to real-time community posts from Firestore
+        const unsubscribe = subscribeToCommunityPosts(
+            (firestorePosts) => {
+                if (firestorePosts.length > 0) {
+                    setPosts(firestorePosts)
+                } else {
+                    // Use mock data if no posts from Firestore
+                    setPosts(MOCK_REVIEWS)
+                }
+                setIsLoading(false)
+            },
+            (error) => {
+                console.error('Error fetching posts:', error)
+                // Use mock data on error
                 setPosts(MOCK_REVIEWS)
+                setIsLoading(false)
             }
-        } catch (error) {
-            console.error('Error fetching posts:', error)
-            setPosts(MOCK_REVIEWS)
-        } finally {
-            setIsLoading(false)
-        }
-    }
+        )
+
+        // Cleanup subscription on unmount
+        return () => unsubscribe()
+    }, [])
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -55,51 +57,41 @@ export default function CommunityPage() {
         setIsSubmitting(true)
         try {
             const displayName = user?.displayName || user?.email?.split('@')[0] || 'Anonymous'
-            const res = await fetch('/api/community', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    user: displayName,
-                    content: formData.content,
-                    movie: formData.movie || undefined,
-                    rating: formData.movie ? formData.rating : undefined,
-                    avatar: '🎬',
-                }),
+            
+            await addCommunityPost({
+                user: displayName,
+                content: formData.content,
+                movie: formData.movie || undefined,
+                rating: formData.movie ? formData.rating : undefined,
+                avatar: '🎬',
             })
 
-            if (res.ok) {
-                showNotification('Post created! 🎉', 'success')
-                setFormData({ content: '', movie: '', rating: 5 })
-                setShowForm(false)
-                fetchPosts()
-            } else {
-                // Add to local state if API fails
-                const newPost = {
-                    id: Date.now(),
-                    user: displayName,
-                    avatar: '🎬',
-                    content: formData.content,
-                    movie: formData.movie,
-                    rating: formData.rating,
-                    likes: 0,
-                    replies: 0,
-                    createdAt: new Date().toISOString(),
-                }
-                setPosts([newPost, ...posts])
-                showNotification('Post created (offline mode)', 'info')
-                setFormData({ content: '', movie: '', rating: 5 })
-                setShowForm(false)
-            }
+            showNotification('Post created! 🎉', 'success')
+            setFormData({ content: '', movie: '', rating: 5 })
+            setShowForm(false)
         } catch (error) {
             console.error('Error creating post:', error)
-            showNotification('Failed to create post. Database may not be configured.', 'error')
+            showNotification('Failed to create post. Please try again.', 'error')
         } finally {
             setIsSubmitting(false)
         }
     }
 
-    const formatDate = (dateString) => {
-        const date = new Date(dateString)
+    const formatDate = (dateValue) => {
+        // Safely convert to Date object
+        let date;
+        if (dateValue instanceof Date) {
+            date = dateValue;
+        } else if (dateValue) {
+            date = new Date(dateValue);
+            // Check if date is valid
+            if (isNaN(date.getTime())) {
+                return 'Recently';
+            }
+        } else {
+            return 'Recently';
+        }
+        
         const now = new Date()
         const diff = now.getTime() - date.getTime()
         const minutes = Math.floor(diff / 60000)

@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react'
-import { Bell, Search, X, Menu, LogIn, Flame, Gift, Sparkles, Info } from 'lucide-react'
+import { Bell, Search, X, Menu, Flame, Gift, Sparkles, Info } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useSidebar } from '@/context/SidebarContext'
 import { useSmartNotify } from '@/context/SmartNotifyContext'

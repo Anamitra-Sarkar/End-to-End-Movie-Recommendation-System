@@ -4,22 +4,26 @@ import React, { createContext, useContext, useState, useCallback, ReactNode } fr
 
 interface SidebarContextType {
     isOpen: boolean;
+    isCollapsed: boolean;
     openSidebar: () => void;
     closeSidebar: () => void;
     toggleSidebar: () => void;
+    toggleCollapsed: () => void;
 }
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 
 export function SidebarProvider({ children }: { children: ReactNode }) {
     const [isOpen, setIsOpen] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(false);
 
     const openSidebar = useCallback(() => setIsOpen(true), []);
     const closeSidebar = useCallback(() => setIsOpen(false), []);
     const toggleSidebar = useCallback(() => setIsOpen(prev => !prev), []);
+    const toggleCollapsed = useCallback(() => setIsCollapsed(prev => !prev), []);
 
     return (
-        <SidebarContext.Provider value={{ isOpen, openSidebar, closeSidebar, toggleSidebar }}>
+        <SidebarContext.Provider value={{ isOpen, openSidebar, closeSidebar, toggleSidebar, isCollapsed, toggleCollapsed }}>
             {children}
         </SidebarContext.Provider>
     );

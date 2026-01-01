@@ -1,12 +1,15 @@
 "use client";
 
 import React, { useState, useEffect, use } from 'react'
-import { Star, Calendar, Clock, Play, Heart, Share2, ArrowLeft } from 'lucide-react'
+import { Star, Calendar, Clock, Play, Heart, Share2, ArrowLeft, Check } from 'lucide-react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { getMovieDetails, getRecommendations } from '@/services/api'
 import MovieCard from '@/components/MovieCard'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/context/AuthContext'
+import { useNotification } from '@/context/NotificationContext'
+import { addToRecents } from '@/lib/recents'
 
 export default function MovieDetailsPage({ params }) {
     // Unwrap params for Next.js 15+ compatibility
@@ -18,6 +21,9 @@ export default function MovieDetailsPage({ params }) {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [isWatchlisted, setIsWatchlisted] = useState(false)
+    const [copied, setCopied] = useState(false)
+    const { user } = useAuth()
+    const { showNotification } = useNotification()
 
     useEffect(() => {
         if (!id) return;
@@ -35,7 +41,20 @@ export default function MovieDetailsPage({ params }) {
             const details = await getMovieDetails(id);
             setMovie(details);
 
-            // 2. Get Recommendations based on title
+            // 2. Add to recents
+            if (details) {
+                const recentMovie = {
+                    id: details.id,
+                    title: details.title,
+                    poster: details.poster,
+                    rating: details.rating,
+                    genre: details.genres?.[0] || 'Movie',
+                    year: details.year,
+                };
+                addToRecents(user?.uid || null, recentMovie);
+            }
+
+            // 3. Get Recommendations based on title
             if (details.title) {
                 const recData = await getRecommendations(details.title);
                 if (recData.movies && recData.posters) {
@@ -67,6 +86,7 @@ export default function MovieDetailsPage({ params }) {
 
         if (isWatchlisted) {
             newWatchlist = saved.filter(m => m.id !== parseInt(id));
+            showNotification(`${movie.title} removed from Watchlist`, 'info');
         } else {
             const simpleMovie = {
                 id: movie.id,
@@ -77,11 +97,28 @@ export default function MovieDetailsPage({ params }) {
                 year: movie.year
             };
             newWatchlist = [...saved, simpleMovie];
+            showNotification(`${movie.title} added to Watchlist! 🎬`, 'success');
         }
 
         localStorage.setItem('watchlist', JSON.stringify(newWatchlist));
         setIsWatchlisted(!isWatchlisted);
         window.dispatchEvent(new Event('storage'));
+    }
+
+    const handleShare = async () => {
+        const url = window.location.href;
+        
+        try {
+            await navigator.clipboard.writeText(url);
+            setCopied(true);
+            showNotification('Link copied to clipboard!', 'success');
+            
+            // Reset copied state after 2 seconds
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy:', err);
+            showNotification('Failed to copy link', 'error');
+        }
     }
 
     if (loading) return (
@@ -152,8 +189,16 @@ export default function MovieDetailsPage({ params }) {
                             >
                                 <Heart fill={isWatchlisted ? "currentColor" : "none"} />
                             </button>
-                            <button className="p-4 rounded-2xl border-2 border-white/20 text-white hover:bg-white/10 transition-all active:scale-95">
-                                <Share2 />
+                            <button 
+                                onClick={handleShare}
+                                className={cn(
+                                    "p-4 rounded-2xl border-2 transition-all active:scale-95",
+                                    copied 
+                                        ? "bg-green-500 border-green-500 text-white" 
+                                        : "border-white/20 text-white hover:bg-white/10"
+                                )}
+                            >
+                                {copied ? <Check /> : <Share2 />}
                             </button>
                         </div>
                     </div>

@@ -5,8 +5,10 @@ import { Search, Loader2, ChevronDown } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import MovieCard from '@/components/MovieCard'
 import MovieRow from '@/components/MovieRow'
-import { getSuggestions, getMovies } from '@/services/api'
+import { getSuggestions, getMovies, getRecommendations } from '@/services/api'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/context/AuthContext'
+import { getRecents, getLastViewed } from '@/lib/recents'
 
 // MOCK DATA - Always shows movies even if backend fails
 const MOCK_MOVIES = [
@@ -53,7 +55,11 @@ export default function MovieDashboard({
     const [suggestions, setSuggestions] = useState([])
     const [showSuggestions, setShowSuggestions] = useState(false)
     const [activeDropdown, setActiveDropdown] = useState(null)
+    const [recents, setRecents] = useState([])
+    const [smartRecs, setSmartRecs] = useState([])
+    const [hasRecents, setHasRecents] = useState(false)
     const dropdownRef = useRef(null)
+    const { user } = useAuth()
 
     useEffect(() => {
         if (enableSearch) getSuggestions().then(setSuggestions).catch(() => { })
@@ -76,6 +82,45 @@ export default function MovieDashboard({
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    // Load recents and smart recommendations
+    useEffect(() => {
+        if (mode === 'home') {
+            loadRecentsAndRecommendations();
+        }
+    }, [mode, user]);
+
+    const loadRecentsAndRecommendations = async () => {
+        try {
+            // Load recents
+            const recentMovies = await getRecents(user?.uid || null);
+            setRecents(recentMovies);
+            setHasRecents(recentMovies.length > 0);
+
+            // Load smart recommendations based on last viewed
+            const lastViewed = await getLastViewed(user?.uid || null);
+            if (lastViewed?.title) {
+                try {
+                    const recData = await getRecommendations(lastViewed.title);
+                    if (recData.movies && recData.posters && recData.movies.length > 0) {
+                        const recs = recData.movies.map((title, i) => ({
+                            id: `rec-${i}-${Date.now()}`,
+                            title: title,
+                            poster: recData.posters[i],
+                            rating: 0,
+                            year: 0,
+                            genre: 'Recommended'
+                        }));
+                        setSmartRecs(recs);
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch smart recommendations:', err);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to load recents:', err);
+        }
+    };
 
     // Load cached movies instantly on mount
     useEffect(() => {
@@ -153,8 +198,8 @@ export default function MovieDashboard({
     return (
         <div className="min-h-full pb-20">
             {enableSearch && (
-                <section className="relative pt-32 pb-10 px-8">
-                    <div className="max-w-4xl mx-auto text-center z-10 relative">
+                <section className="relative pt-32 pb-10 px-8 z-40">
+                    <div className="max-w-4xl mx-auto text-center relative">
                         <motion.h1
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -210,14 +255,48 @@ export default function MovieDashboard({
 
             {!enableSearch && <div className="pt-24" />}
 
-            <section className="px-8 max-w-7xl mx-auto">
+            <section className="px-8 max-w-7xl mx-auto relative z-10 mt-4">
 
                 {mode === 'home' && !filters.search ? (
                     <div className="space-y-12 animate-in fade-in duration-700">
-                        <MovieRow title="Recently Watched" params={{ sort: 'release_date.desc' }} mockData={MOCK_MOVIES.slice(0, 8)} />
-                        <MovieRow title="Recommended for You" params={{ sort: 'popularity.desc' }} mockData={MOCK_MOVIES.slice(3, 11)} />
+                        {/* Recently Watched - Only show if user has recents */}
+                        {hasRecents && recents.length > 0 && (
+                            <div className="mb-8 group/row">
+                                <h2 className="text-xl font-bold text-white mb-4 px-2 flex items-center gap-2">
+                                    <div className="w-1 h-6 bg-primary rounded-full" />
+                                    Recently Watched
+                                </h2>
+                                <div className="flex gap-4 overflow-x-auto px-2 pb-4 scroll-smooth" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                                    {recents.slice(0, 10).map((movie, index) => (
+                                        <div key={movie.id || index} className="w-[160px] md:w-[200px] flex-shrink-0">
+                                            <MovieCard {...movie} />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        
+                        {/* Smart Recommendations - Only show if we have recents and smart recs */}
+                        {hasRecents && smartRecs.length > 0 && (
+                            <div className="mb-8 group/row">
+                                <h2 className="text-xl font-bold text-white mb-4 px-2 flex items-center gap-2">
+                                    <div className="w-1 h-6 bg-primary rounded-full" />
+                                    Recommended for You
+                                </h2>
+                                <div className="flex gap-4 overflow-x-auto px-2 pb-4 scroll-smooth" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                                    {smartRecs.slice(0, 10).map((movie, index) => (
+                                        <div key={movie.id || index} className="w-[160px] md:w-[200px] flex-shrink-0">
+                                            <MovieCard {...movie} />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Category Rows - Always show */}
                         <MovieRow title="Action Hits" params={{ genre: 'Action' }} mockData={MOCK_MOVIES.filter(m => m.genre === 'Action')} />
                         <MovieRow title="Trending Now" params={{ sort: 'vote_average.desc' }} mockData={MOCK_MOVIES.slice(5, 13)} />
+                        <MovieRow title="Sci-Fi Adventures" params={{ genre: 'Sci-Fi' }} mockData={MOCK_MOVIES.filter(m => m.genre === 'Sci-Fi')} />
                     </div>
                 ) : (
                     <>

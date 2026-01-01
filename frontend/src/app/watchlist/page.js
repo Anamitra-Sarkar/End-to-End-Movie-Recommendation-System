@@ -1,26 +1,60 @@
 "use client";
 
 import React, { useState, useEffect } from 'react'
-import { Heart, Trash2 } from 'lucide-react'
+import { Heart, Trash2, Loader2 } from 'lucide-react'
 import MovieCard from '@/components/MovieCard'
+import { useAuth } from '@/context/AuthContext'
+import { useNotification } from '@/context/NotificationContext'
+import { getWatchlist } from '@/lib/watchlist'
+import Link from 'next/link'
 
 export default function WatchlistPage() {
     const [watchlist, setWatchlist] = useState([])
+    const [isLoading, setIsLoading] = useState(true)
+    const { user, isLoading: authLoading } = useAuth()
+    const { showNotification } = useNotification()
 
     useEffect(() => {
-        loadWatchlist();
-        window.addEventListener('storage', loadWatchlist);
-        return () => window.removeEventListener('storage', loadWatchlist);
-    }, [])
+        loadWatchlist()
+        window.addEventListener('storage', loadWatchlist)
+        return () => window.removeEventListener('storage', loadWatchlist)
+    }, [user])
 
-    const loadWatchlist = () => {
-        const saved = JSON.parse(localStorage.getItem('watchlist') || '[]');
-        setWatchlist(saved);
+    const loadWatchlist = async () => {
+        setIsLoading(true)
+        try {
+            if (user?.uid) {
+                // Fetch from Firebase
+                const movies = await getWatchlist(user.uid)
+                setWatchlist(movies)
+            } else {
+                // Fallback to localStorage
+                const saved = JSON.parse(localStorage.getItem('watchlist') || '[]')
+                setWatchlist(saved)
+            }
+        } catch (error) {
+            console.error('Error loading watchlist:', error)
+            // Fallback to localStorage on error
+            const saved = JSON.parse(localStorage.getItem('watchlist') || '[]')
+            setWatchlist(saved)
+        } finally {
+            setIsLoading(false)
+        }
     }
 
     const clearWatchlist = () => {
-        localStorage.setItem('watchlist', '[]');
-        setWatchlist([]);
+        localStorage.setItem('watchlist', '[]')
+        setWatchlist([])
+        showNotification('Watchlist cleared', 'info')
+        window.dispatchEvent(new Event('storage'))
+    }
+
+    if (authLoading || isLoading) {
+        return (
+            <div className="min-h-full pt-24 pb-20 px-8 flex items-center justify-center">
+                <Loader2 className="animate-spin text-primary" size={48} />
+            </div>
+        )
     }
 
     return (
@@ -31,7 +65,7 @@ export default function WatchlistPage() {
                         <Heart className="text-red-500 fill-red-500" size={36} />
                         My Watchlist
                     </h1>
-                    {watchlist.length > 0 && (
+                    {watchlist.length > 0 && !user && (
                         <button
                             onClick={clearWatchlist}
                             className="flex items-center gap-2 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 hover:bg-red-500/20 transition-colors"
@@ -40,6 +74,13 @@ export default function WatchlistPage() {
                         </button>
                     )}
                 </div>
+
+                {!user && (
+                    <div className="mb-6 p-4 bg-primary/10 border border-primary/20 rounded-xl text-sm text-text-secondary">
+                        <span className="text-primary font-semibold">Tip:</span> 
+                        <Link href="/login" className="text-primary hover:underline ml-1">Sign in</Link> to sync your watchlist across devices!
+                    </div>
+                )}
 
                 {watchlist.length === 0 ? (
                     <div className="text-center py-20 bg-card rounded-2xl border border-white/5">

@@ -11,15 +11,28 @@ const firebaseConfig = {
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase only if not already initialized
-let app: FirebaseApp;
-let auth: Auth;
-let db: Firestore;
+// Check if Firebase is configured
+const isFirebaseConfigured = Boolean(
+    firebaseConfig.apiKey && 
+    firebaseConfig.authDomain && 
+    firebaseConfig.projectId
+);
 
-if (typeof window !== 'undefined') {
-    app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-    auth = getAuth(app);
-    db = getFirestore(app);
+// Initialize Firebase only if configured and in browser
+let app: FirebaseApp | undefined;
+let auth: Auth | undefined;
+let db: Firestore | undefined;
+
+if (typeof window !== 'undefined' && isFirebaseConfigured) {
+    try {
+        app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+        auth = getAuth(app);
+        db = getFirestore(app);
+    } catch (error) {
+        console.warn('Firebase initialization failed:', error);
+    }
+} else if (typeof window !== 'undefined' && !isFirebaseConfigured) {
+    console.warn('Firebase is not configured. Please add Firebase credentials to your .env file.');
 }
 
-export { app, auth, db };
+export { app, auth, db, isFirebaseConfigured };

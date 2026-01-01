@@ -1,14 +1,15 @@
 "use client";
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
     Home, Compass, Bookmark, Users,
-    Film, Tv, MonitorPlay, Baby,
+    Film, MonitorPlay, Baby,
     LogOut, Play, LogIn
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useUser } from '@/context/UserContext'
+import { useAuth } from '@/context/AuthContext'
+import { useNotification } from '@/context/NotificationContext'
 
 const SidebarItem = ({ icon: Icon, label, path, active }) => {
     return (
@@ -41,7 +42,24 @@ const SidebarCategory = ({ title, children }) => (
 
 const Sidebar = () => {
     const pathname = usePathname()
-    const { user, logout } = useUser()
+    const router = useRouter()
+    const { user, logout, isLoading } = useAuth()
+    const { showNotification } = useNotification()
+
+    const handleLogout = async () => {
+        try {
+            await logout()
+            showNotification('Logged out successfully', 'info')
+            router.push('/')
+        } catch (error) {
+            console.error('Logout error:', error)
+            showNotification('Logout failed', 'error')
+        }
+    }
+
+    // Get display name and avatar from Firebase user
+    const displayName = user?.displayName || user?.email?.split('@')[0] || 'User'
+    const photoURL = user?.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${displayName}`
 
     return (
         <aside className="w-64 h-screen bg-sidebar flex flex-col border-r border-white/5 flex-shrink-0 z-50">
@@ -77,21 +95,25 @@ const Sidebar = () => {
 
             {/* User Profile / Sign In */}
             <div className="p-4 border-t border-white/5">
-                {user ? (
+                {isLoading ? (
+                    <div className="flex items-center justify-center py-3">
+                        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                ) : user ? (
                     <div className="flex items-center gap-2">
                         <Link href="/profile" className="flex-1 flex items-center gap-3 p-2 rounded-xl hover:bg-card-hover cursor-pointer transition-colors group min-w-0">
                             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-purple-500 p-[2px] flex-shrink-0">
                                 <div className="w-full h-full rounded-full bg-sidebar flex items-center justify-center overflow-hidden">
-                                    <img src={user?.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                                    <img src={photoURL} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                                 </div>
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-white truncate">{user?.name}</p>
-                                <p className="text-xs text-text-secondary truncate">{user?.plan || "Free Plan"}</p>
+                                <p className="text-sm font-semibold text-white truncate">{displayName}</p>
+                                <p className="text-xs text-text-secondary truncate">{user?.email || "Premium"}</p>
                             </div>
                         </Link>
                         <button
-                            onClick={logout}
+                            onClick={handleLogout}
                             className="p-2 text-text-secondary hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
                             title="Sign Out"
                         >

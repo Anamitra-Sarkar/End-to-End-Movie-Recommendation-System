@@ -5,17 +5,38 @@ import { Star, Heart, Film } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/context/AuthContext'
+import { useNotification } from '@/context/NotificationContext'
+import { addToWatchlist, removeFromWatchlist, isInWatchlist } from '@/lib/watchlist'
 
 const MovieCard = ({ id, title, poster, rating, genre, year }) => {
     const [imageError, setImageError] = useState(false)
     const [imgSrc, setImgSrc] = useState(poster)
     const [isWatchlisted, setIsWatchlisted] = useState(false)
+    const [isUpdating, setIsUpdating] = useState(false)
+    const { user } = useAuth()
+    const { showNotification } = useNotification()
 
     useEffect(() => {
-        // Hydrate from localStorage
-        const saved = JSON.parse(localStorage.getItem('watchlist') || '[]');
-        setIsWatchlisted(saved.some(m => m.id === id));
-    }, [id])
+        // Check if movie is in watchlist
+        const checkWatchlist = async () => {
+            if (user?.uid && id) {
+                try {
+                    const inWatchlist = await isInWatchlist(user.uid, id)
+                    setIsWatchlisted(inWatchlist)
+                } catch (error) {
+                    // Fallback to localStorage if Firebase not configured
+                    const saved = JSON.parse(localStorage.getItem('watchlist') || '[]');
+                    setIsWatchlisted(saved.some(m => m.id === id));
+                }
+            } else {
+                // Fallback to localStorage
+                const saved = JSON.parse(localStorage.getItem('watchlist') || '[]');
+                setIsWatchlisted(saved.some(m => m.id === id));
+            }
+        }
+        checkWatchlist()
+    }, [id, user])
 
     useEffect(() => {
         if (poster) {
@@ -24,25 +45,62 @@ const MovieCard = ({ id, title, poster, rating, genre, year }) => {
         }
     }, [poster]);
 
-    const toggleWatchlist = (e) => {
+    const toggleWatchlist = async (e) => {
         e.stopPropagation();
         e.preventDefault();
 
-        const saved = JSON.parse(localStorage.getItem('watchlist') || '[]');
-        let newWatchlist;
+        if (isUpdating) return;
+        setIsUpdating(true);
 
-        if (isWatchlisted) {
-            newWatchlist = saved.filter(m => m.id !== id);
-        } else {
-            const movie = { id, title, poster, rating, genre, year };
-            newWatchlist = [...saved, movie];
+        const movie = { id, title, poster, rating, genre, year };
+
+        try {
+            if (user?.uid) {
+                // Use Firebase Firestore
+                if (isWatchlisted) {
+                    await removeFromWatchlist(user.uid, id);
+                    showNotification(`${title} removed from Watchlist`, 'info');
+                } else {
+                    await addToWatchlist(user.uid, movie);
+                    showNotification(`${title} added to Watchlist! 🎬`, 'success');
+                }
+                setIsWatchlisted(!isWatchlisted);
+            } else {
+                // Fallback to localStorage
+                const saved = JSON.parse(localStorage.getItem('watchlist') || '[]');
+                let newWatchlist;
+
+                if (isWatchlisted) {
+                    newWatchlist = saved.filter(m => m.id !== id);
+                    showNotification(`${title} removed from Watchlist`, 'info');
+                } else {
+                    newWatchlist = [...saved, movie];
+                    showNotification(`${title} added to Watchlist! 🎬`, 'success');
+                }
+
+                localStorage.setItem('watchlist', JSON.stringify(newWatchlist));
+                setIsWatchlisted(!isWatchlisted);
+                window.dispatchEvent(new Event('storage'));
+            }
+        } catch (error) {
+            console.error('Watchlist error:', error);
+            // Fallback to localStorage on error
+            const saved = JSON.parse(localStorage.getItem('watchlist') || '[]');
+            let newWatchlist;
+
+            if (isWatchlisted) {
+                newWatchlist = saved.filter(m => m.id !== id);
+            } else {
+                newWatchlist = [...saved, movie];
+            }
+
+            localStorage.setItem('watchlist', JSON.stringify(newWatchlist));
+            setIsWatchlisted(!isWatchlisted);
+            window.dispatchEvent(new Event('storage'));
+            showNotification(isWatchlisted ? 'Removed from Watchlist' : 'Added to Watchlist (offline)', 'info');
+        } finally {
+            setIsUpdating(false);
         }
-
-        localStorage.setItem('watchlist', JSON.stringify(newWatchlist));
-        setIsWatchlisted(!isWatchlisted);
-
-        // Trigger update in other components (e.g. Watchlist Page)
-        window.dispatchEvent(new Event('storage'));
     }
 
     return (
@@ -81,7 +139,8 @@ const MovieCard = ({ id, title, poster, rating, genre, year }) => {
                             "p-2.5 rounded-xl flex items-center justify-center transition-all duration-200 border shadow-lg cursor-pointer active:scale-95 hover:scale-105",
                             isWatchlisted
                                 ? "bg-red-500 text-white border-red-400 hover:bg-red-600"
-                                : "bg-black/60 backdrop-blur-md text-white border-white/20 hover:bg-white/20"
+                                : "bg-black/60 backdrop-blur-md text-white border-white/20 hover:bg-white/20",
+                            isUpdating && "opacity-50 cursor-wait"
                         )}
                         title={isWatchlisted ? "Remove from Watchlist" : "Add to Watchlist"}
                     >

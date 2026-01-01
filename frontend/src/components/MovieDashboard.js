@@ -153,8 +153,8 @@ export default function MovieDashboard({
     return (
         <div className="min-h-full pb-20">
             {enableSearch && (
-                <section className="relative pt-32 pb-10 px-8">
-                    <div className="max-w-4xl mx-auto text-center z-10 relative">
+                <section className="relative pt-32 pb-10 px-8 z-40">
+                    <div className="max-w-4xl mx-auto text-center relative">
                         <motion.h1
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -210,7 +210,7 @@ export default function MovieDashboard({
 
             {!enableSearch && <div className="pt-24" />}
 
-            <section className="px-8 max-w-7xl mx-auto">
+            <section className="px-8 max-w-7xl mx-auto relative z-10 mt-4">
 
                 {mode === 'home' && !filters.search ? (
                     <div className="space-y-12 animate-in fade-in duration-700">

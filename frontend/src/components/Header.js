@@ -1,11 +1,16 @@
 "use client";
 
 import React from 'react'
-import { Bell, Search } from 'lucide-react'
+import { Bell, Search, X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 const Header = () => {
     const [showNotifications, setShowNotifications] = React.useState(false);
+    const [showSearch, setShowSearch] = React.useState(false);
+    const [searchQuery, setSearchQuery] = React.useState('');
     const notificationRef = React.useRef(null);
+    const searchInputRef = React.useRef(null);
+    const router = useRouter();
 
     React.useEffect(() => {
         const handleClickOutside = (event) => {
@@ -16,6 +21,12 @@ const Header = () => {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    React.useEffect(() => {
+        if (showSearch && searchInputRef.current) {
+            searchInputRef.current.focus();
+        }
+    }, [showSearch]);
 
     const [notifications, setNotifications] = React.useState([
         { id: 1, text: "Inception added to your Watchlist", time: "2 min ago", type: "success", read: false },
@@ -29,8 +40,58 @@ const Header = () => {
         setNotifications(notifications.map(n => ({ ...n, read: true })));
     };
 
+    const handleSearch = (e) => {
+        e.preventDefault();
+        if (searchQuery.trim()) {
+            router.push(`/search/${encodeURIComponent(searchQuery.trim())}`);
+            setShowSearch(false);
+            setSearchQuery('');
+        }
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Escape') {
+            setShowSearch(false);
+            setSearchQuery('');
+        }
+    };
+
     return (
-        <header className="absolute top-0 right-0 p-6 flex items-center justify-end gap-4 z-40">
+        <header className="absolute top-0 right-0 p-6 flex items-center justify-end gap-4 z-50">
+            {/* Search Bar (Expandable) */}
+            {showSearch ? (
+                <form onSubmit={handleSearch} className="flex items-center gap-2 animate-in slide-in-from-right duration-200">
+                    <div className="relative">
+                        <input
+                            ref={searchInputRef}
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder="Search movies..."
+                            className="w-64 pl-4 pr-10 py-2.5 bg-card/90 border border-white/10 rounded-xl text-white placeholder-text-secondary backdrop-blur-sm focus:border-primary/50 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setShowSearch(false);
+                                setSearchQuery('');
+                            }}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-secondary hover:text-white transition-colors"
+                        >
+                            <X size={16} />
+                        </button>
+                    </div>
+                    <button
+                        type="submit"
+                        className="p-2.5 bg-primary hover:bg-primary/90 rounded-xl text-white transition-colors"
+                    >
+                        <Search size={18} />
+                    </button>
+                </form>
+            ) : null}
+
+            {/* Notifications */}
             <div className="relative" ref={notificationRef}>
                 <button
                     className="p-3 bg-card/50 hover:bg-card rounded-full text-white backdrop-blur-sm transition-colors relative"
@@ -72,9 +133,15 @@ const Header = () => {
                 )}
             </div>
 
-            <button className="p-3 bg-card/50 hover:bg-card rounded-full text-white backdrop-blur-sm transition-colors">
-                <Search size={20} />
-            </button>
+            {/* Search Toggle Button */}
+            {!showSearch && (
+                <button
+                    onClick={() => setShowSearch(true)}
+                    className="p-3 bg-card/50 hover:bg-card rounded-full text-white backdrop-blur-sm transition-colors"
+                >
+                    <Search size={20} />
+                </button>
+            )}
         </header>
     )
 }

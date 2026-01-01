@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
+import { useSmartNotify } from '@/context/SmartNotifyContext';
 import { Play, Mail, Lock, User, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
@@ -13,6 +14,7 @@ export default function LoginPage() {
     const [error, setError] = useState('');
     const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
     const { showNotification } = useNotification();
+    const { triggerWelcomeBack } = useSmartNotify();
     const router = useRouter();
 
     const handleGoogleSignIn = async () => {
@@ -21,6 +23,8 @@ export default function LoginPage() {
         try {
             await signInWithGoogle();
             showNotification('Welcome back! 🎬', 'success');
+            // Trigger smart notification with user's name
+            triggerWelcomeBack('Movie Fan');
             router.push('/');
         } catch (err) {
             console.error('Google sign-in error:', err);
@@ -44,6 +48,10 @@ export default function LoginPage() {
             if (isLogin) {
                 await signInWithEmail(formData.email, formData.password);
                 showNotification('Welcome back! 🎬', 'success');
+                // Trigger smart notification with user's name (from email)
+                const firstName = formData.email.split('@')[0].split('.')[0];
+                const capitalizedName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
+                triggerWelcomeBack(capitalizedName);
             } else {
                 if (formData.password.length < 6) {
                     setError('Password must be at least 6 characters');

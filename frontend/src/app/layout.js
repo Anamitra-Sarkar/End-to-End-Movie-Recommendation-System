@@ -4,6 +4,7 @@ import { UserProvider } from '@/context/UserContext'
 import { AuthProvider } from '@/context/AuthContext'
 import { NotificationProvider } from '@/context/NotificationContext'
 import { SidebarProvider } from '@/context/SidebarContext'
+import { SmartNotifyProvider } from '@/context/SmartNotifyContext'
 import "./globals.css"
 
 export const metadata = {
@@ -20,15 +21,17 @@ export default function RootLayout({ children }) {
             <body className="flex h-screen w-full bg-background text-text-primary overflow-hidden">
                 <AuthProvider>
                     <NotificationProvider>
-                        <SidebarProvider>
-                            <UserProvider>
-                                <Sidebar />
-                                <main className="flex-1 overflow-y-auto w-full relative custom-scrollbar">
-                                    <Header />
-                                    {children}
-                                </main>
-                            </UserProvider>
-                        </SidebarProvider>
+                        <SmartNotifyProvider>
+                            <SidebarProvider>
+                                <UserProvider>
+                                    <Sidebar />
+                                    <main className="flex-1 overflow-y-auto w-full relative custom-scrollbar">
+                                        <Header />
+                                        {children}
+                                    </main>
+                                </UserProvider>
+                            </SidebarProvider>
+                        </SmartNotifyProvider>
                     </NotificationProvider>
                 </AuthProvider>
             </body>

@@ -1,9 +1,10 @@
 "use client";
 
 import React from 'react'
-import { Bell, Search, X, Menu } from 'lucide-react'
+import { Bell, Search, X, Menu, LogIn, Flame, Gift, Sparkles, Info } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useSidebar } from '@/context/SidebarContext'
+import { useSmartNotify } from '@/context/SmartNotifyContext'
 
 const Header = () => {
     const [showNotifications, setShowNotifications] = React.useState(false);
@@ -13,6 +14,7 @@ const Header = () => {
     const searchInputRef = React.useRef(null);
     const router = useRouter();
     const { toggleSidebar } = useSidebar();
+    const { notifications, unreadCount, markAsRead, markAllAsRead, dismissNotification } = useSmartNotify();
 
     React.useEffect(() => {
         const handleClickOutside = (event) => {
@@ -30,18 +32,6 @@ const Header = () => {
         }
     }, [showSearch]);
 
-    const [notifications, setNotifications] = React.useState([
-        { id: 1, text: "Inception added to your Watchlist", time: "2 min ago", type: "success", read: false },
-        { id: 2, text: "New arrival: Dune Part Two", time: "1 hour ago", type: "info", read: false },
-        { id: 3, text: "Your subscription renews tomorrow", time: "1 day ago", type: "warning", read: false }
-    ]);
-
-    const unreadCount = notifications.filter(n => !n.read).length;
-
-    const markAllAsRead = () => {
-        setNotifications(notifications.map(n => ({ ...n, read: true })));
-    };
-
     const handleSearch = (e) => {
         e.preventDefault();
         if (searchQuery.trim()) {
@@ -55,6 +45,28 @@ const Header = () => {
         if (e.key === 'Escape') {
             setShowSearch(false);
             setSearchQuery('');
+        }
+    };
+
+    const handleNotificationClick = (notification) => {
+        markAsRead(notification.id);
+        if (notification.action) {
+            notification.action();
+            setShowNotifications(false);
+        }
+    };
+
+    const getNotificationIcon = (type) => {
+        switch (type) {
+            case 'success':
+                return <Sparkles size={16} className="text-green-400" />;
+            case 'milestone':
+                return <Gift size={16} className="text-yellow-400" />;
+            case 'warning':
+                return <Flame size={16} className="text-orange-400" />;
+            case 'info':
+            default:
+                return <Info size={16} className="text-blue-400" />;
         }
     };
 
@@ -114,7 +126,7 @@ const Header = () => {
                     >
                         <Bell size={20} />
                         {unreadCount > 0 && (
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                            <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse border-2 border-background"></span>
                         )}
                     </button>
 
@@ -125,25 +137,54 @@ const Header = () => {
                                 {unreadCount > 0 && <span className="text-xs bg-primary px-2 py-0.5 rounded-full">{unreadCount} new</span>}
                             </div>
                             <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
-                                {notifications.map((notif) => (
-                                    <div key={notif.id} className={`p-4 hover:bg-white/5 transition-colors cursor-pointer border-b border-white/5 last:border-0 flex gap-3 ${!notif.read ? 'bg-white/5' : ''}`}>
-                                        <div className={`w-2 h-2 mt-2 rounded-full flex-shrink-0 ${!notif.read ? 'bg-primary' : 'bg-gray-500'}`} />
-                                        <div>
-                                            <p className={`text-sm ${!notif.read ? 'text-white font-medium' : 'text-gray-400'}`}>{notif.text}</p>
-                                            <p className="text-xs text-text-secondary mt-1">{notif.time}</p>
-                                        </div>
+                                {notifications.length === 0 ? (
+                                    <div className="p-6 text-center text-text-secondary">
+                                        <Bell size={24} className="mx-auto mb-2 opacity-50" />
+                                        <p className="text-sm">No notifications yet</p>
                                     </div>
-                                ))}
+                                ) : (
+                                    notifications.map((notif) => (
+                                        <div 
+                                            key={notif.id} 
+                                            onClick={() => handleNotificationClick(notif)}
+                                            className={`p-4 hover:bg-white/5 transition-colors cursor-pointer border-b border-white/5 last:border-0 flex gap-3 ${!notif.read ? 'bg-white/5' : ''}`}
+                                        >
+                                            <div className="flex-shrink-0 mt-0.5">
+                                                {getNotificationIcon(notif.type)}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className={`text-sm ${!notif.read ? 'text-white font-medium' : 'text-gray-400'}`}>{notif.text}</p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <p className="text-xs text-text-secondary">{notif.time}</p>
+                                                    {notif.actionLabel && (
+                                                        <span className="text-xs text-primary font-medium">{notif.actionLabel} →</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    dismissNotification(notif.id);
+                                                }}
+                                                className="text-text-secondary hover:text-white transition-colors p-1 opacity-0 group-hover:opacity-100"
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                    ))
+                                )}
                             </div>
-                            <div className="p-3 border-t border-white/5 text-center">
-                                <button
-                                    onClick={markAllAsRead}
-                                    className="text-xs text-primary hover:text-primary/80 font-medium disabled:opacity-50"
-                                    disabled={unreadCount === 0}
-                                >
-                                    Mark all as read
-                                </button>
-                            </div>
+                            {notifications.length > 0 && (
+                                <div className="p-3 border-t border-white/5 text-center">
+                                    <button
+                                        onClick={markAllAsRead}
+                                        className="text-xs text-primary hover:text-primary/80 font-medium disabled:opacity-50"
+                                        disabled={unreadCount === 0}
+                                    >
+                                        Mark all as read
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
 import { useNotification } from '@/context/NotificationContext'
+import { useSmartNotify } from '@/context/SmartNotifyContext'
 import { addToWatchlist, removeFromWatchlist, isInWatchlist } from '@/lib/watchlist'
 
 const MovieCard = ({ id, title, poster, rating, genre, year }) => {
@@ -16,6 +17,7 @@ const MovieCard = ({ id, title, poster, rating, genre, year }) => {
     const [isUpdating, setIsUpdating] = useState(false)
     const { user } = useAuth()
     const { showNotification } = useNotification()
+    const { triggerWatchlistAdd, checkMilestones } = useSmartNotify()
 
     useEffect(() => {
         // Check if movie is in watchlist
@@ -63,6 +65,11 @@ const MovieCard = ({ id, title, poster, rating, genre, year }) => {
                 } else {
                     await addToWatchlist(user.uid, movie);
                     showNotification(`${title} added to Watchlist! 🎬`, 'success');
+                    // Trigger smart notification for bell icon
+                    triggerWatchlistAdd(title);
+                    // Check for milestones (we'll estimate count)
+                    const saved = JSON.parse(localStorage.getItem('watchlist') || '[]');
+                    checkMilestones(saved.length + 1);
                 }
                 setIsWatchlisted(!isWatchlisted);
             } else {
@@ -76,6 +83,10 @@ const MovieCard = ({ id, title, poster, rating, genre, year }) => {
                 } else {
                     newWatchlist = [...saved, movie];
                     showNotification(`${title} added to Watchlist! 🎬`, 'success');
+                    // Trigger smart notification for bell icon
+                    triggerWatchlistAdd(title);
+                    // Check for milestones
+                    checkMilestones(newWatchlist.length);
                 }
 
                 localStorage.setItem('watchlist', JSON.stringify(newWatchlist));
@@ -92,6 +103,8 @@ const MovieCard = ({ id, title, poster, rating, genre, year }) => {
                 newWatchlist = saved.filter(m => m.id !== id);
             } else {
                 newWatchlist = [...saved, movie];
+                triggerWatchlistAdd(title);
+                checkMilestones(newWatchlist.length);
             }
 
             localStorage.setItem('watchlist', JSON.stringify(newWatchlist));

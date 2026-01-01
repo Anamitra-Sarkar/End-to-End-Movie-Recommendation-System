@@ -42,6 +42,18 @@ export function subscribeToCommunityPosts(
         (snapshot) => {
             const posts = snapshot.docs.map((doc) => {
                 const data = doc.data();
+                let createdAt: Date;
+                
+                // Safely handle createdAt conversion
+                if (data.createdAt?.toDate) {
+                    createdAt = data.createdAt.toDate();
+                } else if (data.createdAt) {
+                    const parsed = new Date(data.createdAt);
+                    createdAt = isNaN(parsed.getTime()) ? new Date() : parsed;
+                } else {
+                    createdAt = new Date();
+                }
+                
                 return {
                     id: doc.id,
                     user: data.user || 'Anonymous',
@@ -51,7 +63,7 @@ export function subscribeToCommunityPosts(
                     content: data.content || '',
                     likes: data.likes || 0,
                     replies: data.replies || 0,
-                    createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt),
+                    createdAt,
                 } as CommunityPost;
             });
             callback(posts);

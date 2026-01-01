@@ -137,7 +137,7 @@ const Sidebar = () => {
                     {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
                 </button>
 
-                <div className="flex-1 h-screen overflow-y-auto px-2 py-4 pb-20 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto px-2 py-4 pb-20 custom-scrollbar">
                     <SidebarCategory title="Menu" isCollapsed={isCollapsed}>
                         <SidebarItem icon={Home} label="Home" path="/" active={pathname === '/'} onNavigate={handleNavigate} isCollapsed={isCollapsed} />
                         <SidebarItem icon={Compass} label="Browse" path="/browse" active={pathname === '/browse'} onNavigate={handleNavigate} isCollapsed={isCollapsed} />

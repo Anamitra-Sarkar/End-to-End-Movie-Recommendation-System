@@ -17,7 +17,7 @@ const MovieCard = ({ id, title, poster, rating, genre, year }) => {
     const [isUpdating, setIsUpdating] = useState(false)
     const { user } = useAuth()
     const { showNotification } = useNotification()
-    const { triggerWatchlistAdd, checkMilestones } = useSmartNotify()
+    const { triggerWatchlistAdd } = useSmartNotify()
 
     useEffect(() => {
         // Check if movie is in watchlist

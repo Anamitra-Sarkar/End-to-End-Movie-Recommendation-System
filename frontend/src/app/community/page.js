@@ -78,7 +78,20 @@ export default function CommunityPage() {
     }
 
     const formatDate = (dateValue) => {
-        const date = dateValue instanceof Date ? dateValue : new Date(dateValue)
+        // Safely convert to Date object
+        let date;
+        if (dateValue instanceof Date) {
+            date = dateValue;
+        } else if (dateValue) {
+            date = new Date(dateValue);
+            // Check if date is valid
+            if (isNaN(date.getTime())) {
+                return 'Recently';
+            }
+        } else {
+            return 'Recently';
+        }
+        
         const now = new Date()
         const diff = now.getTime() - date.getTime()
         const minutes = Math.floor(diff / 60000)

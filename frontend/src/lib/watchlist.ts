@@ -4,6 +4,7 @@ import {
     setDoc,
     deleteDoc,
     getDocs,
+    getDoc,
     query,
     orderBy,
 } from 'firebase/firestore';
@@ -53,7 +54,6 @@ export async function getWatchlist(userId: string): Promise<WatchlistMovie[]> {
 export async function isInWatchlist(userId: string, movieId: number): Promise<boolean> {
     if (!db) throw new Error('Firestore not initialized');
     
-    const { getDoc } = await import('firebase/firestore');
     const docRef = doc(db, 'users', userId, 'watchlist', String(movieId));
     const docSnap = await getDoc(docRef);
     return docSnap.exists();

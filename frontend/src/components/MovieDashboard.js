@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import MovieCard from '@/components/MovieCard'
 import MovieCardSkeleton from '@/components/MovieCardSkeleton'
 import MovieRow from '@/components/MovieRow'
-import { getSuggestions, getMovies, getRecommendations } from '@/services/api'
+import { getSuggestions, getMovies, getRecommendations, searchMovieByTitle } from '@/services/api'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
 import { getRecents, getLastViewed } from '@/lib/recents'
@@ -114,15 +114,39 @@ export default function MovieDashboard({
                 try {
                     const recData = await getRecommendations(lastViewed.title);
                     if (recData.movies && recData.posters && recData.movies.length > 0) {
-                        const recs = recData.movies.map((title, i) => ({
-                            id: `rec-${i}-${Date.now()}`,
-                            title: title,
-                            poster: recData.posters[i],
-                            rating: undefined,
-                            year: undefined,
-                            genre: 'Recommended'
-                        }));
-                        setSmartRecs(recs);
+                        // Fetch full movie details for each recommendation to get proper IDs and ratings
+                        const recPromises = recData.movies.slice(0, 10).map(async (title, i) => {
+                            const movieDetails = await searchMovieByTitle(title);
+                            if (movieDetails) {
+                                // Normalize to standard movie interface
+                                return {
+                                    id: movieDetails.id,
+                                    title: movieDetails.title,
+                                    poster_path: movieDetails.poster_path || movieDetails.poster,
+                                    poster: movieDetails.poster_path || movieDetails.poster,
+                                    vote_average: movieDetails.vote_average || movieDetails.rating,
+                                    rating: movieDetails.vote_average || movieDetails.rating,
+                                    year: movieDetails.year,
+                                    genre: movieDetails.genre || 'Recommended'
+                                };
+                            }
+                            // Fallback to poster-only if search fails
+                            return {
+                                id: `rec-${i}-${Date.now()}`,
+                                title: title,
+                                poster_path: recData.posters[i],
+                                poster: recData.posters[i],
+                                vote_average: 0,
+                                rating: 0,
+                                year: undefined,
+                                genre: 'Recommended'
+                            };
+                        });
+                        
+                        const recs = await Promise.all(recPromises);
+                        // Filter out failed recommendations (with rec- prefix)
+                        const validRecs = recs.filter(rec => !String(rec.id).startsWith('rec-'));
+                        setSmartRecs(validRecs.length > 0 ? validRecs : recs);
                     }
                 } catch (err) {
                     console.error('Failed to fetch smart recommendations:', err);

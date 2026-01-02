@@ -18,21 +18,22 @@ const isFirebaseConfigured = Boolean(
     firebaseConfig.projectId
 );
 
-// Initialize Firebase only if configured and in browser
-let app: FirebaseApp | undefined;
-let auth: Auth | undefined;
-let db: Firestore | undefined;
+// Initialize Firebase (SSR-safe - Firebase SDK handles SSR internally)
+let app: FirebaseApp;
+let auth: Auth;
+let db: Firestore;
 
-if (typeof window !== 'undefined' && isFirebaseConfigured) {
-    try {
-        app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-        auth = getAuth(app);
-        db = getFirestore(app);
-    } catch (error) {
-        console.warn('Firebase initialization failed:', error);
-    }
-} else if (typeof window !== 'undefined' && !isFirebaseConfigured) {
-    console.warn('Firebase is not configured. Please add Firebase credentials to your .env file.');
+if (!isFirebaseConfigured) {
+    throw new Error('Firebase is not configured. Please add Firebase credentials to your .env file.');
+}
+
+try {
+    app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+    auth = getAuth(app);
+    db = getFirestore(app);
+} catch (error) {
+    console.error('Firebase initialization failed:', error);
+    throw error;
 }
 
 export { app, auth, db, isFirebaseConfigured };

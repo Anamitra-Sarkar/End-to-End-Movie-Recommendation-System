@@ -137,7 +137,7 @@ export default function MovieDetailsPage({ params }) {
     return (
         <div className="min-h-full pb-20">
             {/* Hero Backdrop */}
-            <div className="relative h-[70vh] w-full overflow-hidden">
+            <div className="relative min-h-[70vh] w-full overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent z-10" />
                 <div className="absolute inset-0 bg-gradient-to-r from-background via-background/40 to-transparent z-10" />
                 <img
@@ -147,7 +147,7 @@ export default function MovieDetailsPage({ params }) {
                 />
 
                 <div className="absolute inset-0 z-20 flex items-center px-8 md:px-16">
-                    <div className="max-w-3xl pt-20">
+                    <div className="max-w-3xl pt-20 pb-8">
                         <Link href="/" className="inline-flex items-center gap-2 text-text-secondary hover:text-white mb-6 transition-colors">
                             <ArrowLeft size={20} /> Back to Browse
                         </Link>
@@ -179,7 +179,7 @@ export default function MovieDetailsPage({ params }) {
                             {movie.overview}
                         </p>
 
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center flex-wrap gap-4">
                             <button className="flex items-center gap-3 px-8 py-4 bg-primary hover:bg-primary/90 text-white rounded-2xl font-bold text-lg transition-transform active:scale-95 shadow-lg shadow-primary/25">
                                 <Play fill="currentColor" /> Watch Now
                             </button>
@@ -206,29 +206,29 @@ export default function MovieDetailsPage({ params }) {
             </div>
 
             {/* Content & Recommendations */}
-            <div className="px-8 md:px-16 -mt-10 relative z-30">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+            <div className="px-8 md:px-16 mt-8 relative z-30">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
                     {/* Details Column */}
                     <div className="lg:col-span-2 space-y-12">
                         {/* Cast */}
-                        <section>
+                        <section className="w-full">
                             <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
                                 <div className="w-1 h-8 bg-primary rounded-full" /> Top Cast
                             </h3>
                             <div className="flex flex-wrap gap-4">
-                                <div className="p-4 bg-card rounded-xl border border-white/5">
+                                <div className="p-4 bg-card rounded-xl border border-white/5 w-full">
                                     <p className="text-text-secondary italic">Cast information coming soon via data pipeline update.</p>
                                 </div>
                             </div>
                         </section>
 
                         {/* Recommendations */}
-                        <section>
+                        <section className="w-full">
                             <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
                                 <div className="w-1 h-8 bg-primary rounded-full" /> More Like This
                             </h3>
                             {recommendations.length > 0 ? (
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
                                     {recommendations.slice(0, 6).map((rec, i) => (
                                         <MovieCard key={i} {...rec} />
                                     ))}
@@ -240,15 +240,15 @@ export default function MovieDetailsPage({ params }) {
                     </div>
 
                     {/* Meta Sidebar */}
-                    <div className="space-y-6">
-                        <div className="bg-card p-6 rounded-3xl border border-white/5 space-y-6">
+                    <div className="space-y-6 w-full">
+                        <div className="bg-card p-6 rounded-3xl border border-white/5 space-y-6 w-full">
                             <div>
                                 <h4 className="text-text-secondary text-sm font-bold uppercase tracking-wider mb-2">Director</h4>
-                                <p className="text-white font-medium text-lg">{movie.director}</p>
+                                <p className="text-white font-medium text-lg break-words">{movie.director}</p>
                             </div>
                             <div>
                                 <h4 className="text-text-secondary text-sm font-bold uppercase tracking-wider mb-2">Tagline</h4>
-                                <p className="text-white italic">"{movie.tagline}"</p>
+                                <p className="text-white italic break-words">"{movie.tagline}"</p>
                             </div>
                             <div>
                                 <h4 className="text-text-secondary text-sm font-bold uppercase tracking-wider mb-2">Status</h4>

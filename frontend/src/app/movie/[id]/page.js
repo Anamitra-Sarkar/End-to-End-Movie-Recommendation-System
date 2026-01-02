@@ -4,7 +4,7 @@ import React, { useState, useEffect, use } from 'react'
 import { Star, Calendar, Clock, Play, Heart, Share2, ArrowLeft, Check } from 'lucide-react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { getMovieDetails, getRecommendations } from '@/services/api'
+import { getMovieDetails, getRecommendations, searchMovieByTitle } from '@/services/api'
 import MovieCard from '@/components/MovieCard'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
@@ -76,17 +76,47 @@ export default function MovieDetailsPage({ params }) {
             // 3. Get Recommendations based on title
             if (details.title) {
                 const recData = await getRecommendations(details.title);
-                if (recData.movies && recData.posters) {
-                    // Map arrays to objects for MovieCard
-                    const recs = recData.movies.map((title, i) => ({
-                        id: `rec-${i}-${Date.now()}`,
-                        title: title,
-                        poster: recData.posters[i],
-                        rating: undefined,
-                        year: undefined,
-                        genre: 'Recommendation'
-                    }));
-                    setRecommendations(recs);
+                if (recData.movies && recData.posters && recData.movies.length > 0) {
+                    // Fetch full movie details for each recommendation to get proper IDs and ratings
+                    // Process in smaller batches to avoid overwhelming the server
+                    const recPromises = recData.movies.slice(0, 6).map(async (title, i) => {
+                        try {
+                            const movieDetails = await searchMovieByTitle(title);
+                            if (movieDetails && movieDetails.id && !isNaN(parseInt(movieDetails.id))) {
+                                // Normalize to standard movie interface with valid ID
+                                return {
+                                    id: movieDetails.id,
+                                    title: movieDetails.title,
+                                    poster_path: movieDetails.poster_path || movieDetails.poster,
+                                    poster: movieDetails.poster_path || movieDetails.poster,
+                                    vote_average: movieDetails.vote_average || movieDetails.rating,
+                                    rating: movieDetails.vote_average || movieDetails.rating,
+                                    year: movieDetails.year,
+                                    genre: movieDetails.genre || 'Recommended',
+                                    isValidMovie: true
+                                };
+                            }
+                        } catch (err) {
+                            console.error(`Failed to fetch details for ${title}:`, err);
+                        }
+                        // Fallback to poster-only if search fails - mark as invalid for filtering
+                        return {
+                            id: `rec-${i}-${Date.now()}`,
+                            title: title,
+                            poster_path: recData.posters[i],
+                            poster: recData.posters[i],
+                            vote_average: 0,
+                            rating: 0,
+                            year: undefined,
+                            genre: 'Recommended',
+                            isValidMovie: false
+                        };
+                    });
+                    
+                    const recs = await Promise.all(recPromises);
+                    // Filter to only valid movies with real IDs, fallback to all if none succeeded
+                    const validRecs = recs.filter(rec => rec.isValidMovie);
+                    setRecommendations(validRecs.length > 0 ? validRecs : recs);
                 }
             }
         } catch (err) {
@@ -169,7 +199,7 @@ export default function MovieDetailsPage({ params }) {
     return (
         <div className="min-h-full pb-20">
             {/* Hero Backdrop */}
-            <div className="relative w-full overflow-hidden" style={{ height: '600px' }}>
+            <div className="relative w-full overflow-hidden min-h-[500px] md:min-h-[600px]">
                 <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent z-10" />
                 <div className="absolute inset-0 bg-gradient-to-r from-background via-background/40 to-transparent z-10" />
                 <img
@@ -178,64 +208,64 @@ export default function MovieDetailsPage({ params }) {
                     className="absolute inset-0 w-full h-full object-cover opacity-60"
                 />
 
-                <div className="absolute inset-0 z-20 flex items-center px-8 md:px-16">
-                    <div className="max-w-3xl pt-20 pb-8">
-                        <Link href="/" className="inline-flex items-center gap-2 text-text-secondary hover:text-white mb-6 transition-colors">
+                <div className="absolute inset-0 z-20 flex items-end md:items-center px-4 sm:px-8 md:px-16">
+                    <div className="max-w-3xl w-full pt-20 pb-8">
+                        <Link href="/" className="inline-flex items-center gap-2 text-text-secondary hover:text-white mb-4 md:mb-6 transition-colors">
                             <ArrowLeft size={20} /> Back to Browse
                         </Link>
 
                         <motion.h1
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="text-5xl md:text-7xl font-black text-white mb-4 leading-tight tracking-tight"
+                            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black text-white mb-3 md:mb-4 leading-tight tracking-tight break-words"
                         >
                             {movie.title}
                         </motion.h1>
 
-                        <div className="flex items-center flex-wrap gap-4 text-sm md:text-base text-gray-300 mb-8 font-medium">
-                            <span className="flex items-center gap-1 bg-yellow-500/10 text-yellow-500 px-3 py-1 rounded-full border border-yellow-500/20">
-                                <Star size={16} fill="currentColor" /> {movie.rating.toFixed(1)}
+                        <div className="flex items-center flex-wrap gap-2 md:gap-4 text-xs sm:text-sm md:text-base text-gray-300 mb-6 md:mb-8 font-medium">
+                            <span className="flex items-center gap-1 bg-yellow-500/10 text-yellow-500 px-2 md:px-3 py-1 rounded-full border border-yellow-500/20">
+                                <Star size={14} className="md:w-4 md:h-4" fill="currentColor" /> {movie.rating.toFixed(1)}
                             </span>
                             <span className="flex items-center gap-1">
-                                <Calendar size={16} /> {movie.year}
+                                <Calendar size={14} className="md:w-4 md:h-4" /> {movie.year}
                             </span>
                             <span className="flex items-center gap-1">
-                                <Clock size={16} /> {movie.runtime}m
+                                <Clock size={14} className="md:w-4 md:h-4" /> {movie.runtime}m
                             </span>
                             {movie.genres.map(g => (
-                                <span key={g} className="px-3 py-1 bg-white/10 rounded-full text-xs md:text-sm">{g}</span>
+                                <span key={g} className="px-2 md:px-3 py-1 bg-white/10 rounded-full text-xs md:text-sm">{g}</span>
                             ))}
                         </div>
 
-                        <p className="text-lg text-gray-300 mb-10 leading-relaxed max-w-2xl line-clamp-4">
+                        <p className="text-sm sm:text-base md:text-lg text-gray-300 mb-6 md:mb-10 leading-relaxed max-w-2xl line-clamp-3 md:line-clamp-4">
                             {movie.overview}
                         </p>
 
-                        <div className="flex items-center flex-wrap gap-4">
-                            <button className="flex items-center gap-3 px-8 py-4 bg-primary hover:bg-primary/90 text-white rounded-2xl font-bold text-lg transition-transform active:scale-95 shadow-lg shadow-primary/25">
-                                <Play fill="currentColor" /> Coming Soon
+                        <div className="flex items-center flex-wrap gap-3 md:gap-4">
+                            <button className="flex items-center gap-2 md:gap-3 px-5 md:px-8 py-3 md:py-4 bg-primary hover:bg-primary/90 text-white rounded-xl md:rounded-2xl font-bold text-base md:text-lg transition-transform active:scale-95 shadow-lg shadow-primary/25">
+                                <Play fill="currentColor" className="w-4 h-4 md:w-5 md:h-5" /> Coming Soon
                             </button>
                             <button
                                 onClick={toggleWatchlist}
                                 disabled={isUpdating}
                                 className={cn(
-                                    "p-4 rounded-2xl border-2 transition-all active:scale-95",
+                                    "p-3 md:p-4 rounded-xl md:rounded-2xl border-2 transition-all active:scale-95",
                                     isWatchlisted ? "bg-red-500 border-red-500 text-white" : "border-white/20 text-white hover:bg-white/10",
                                     isUpdating && "opacity-50 cursor-wait"
                                 )}
                             >
-                                <Heart fill={isWatchlisted ? "currentColor" : "none"} />
+                                <Heart fill={isWatchlisted ? "currentColor" : "none"} className="w-5 h-5 md:w-6 md:h-6" />
                             </button>
                             <button 
                                 onClick={handleShare}
                                 className={cn(
-                                    "p-4 rounded-2xl border-2 transition-all active:scale-95",
+                                    "p-3 md:p-4 rounded-xl md:rounded-2xl border-2 transition-all active:scale-95",
                                     copied 
                                         ? "bg-green-500 border-green-500 text-white" 
                                         : "border-white/20 text-white hover:bg-white/10"
                                 )}
                             >
-                                {copied ? <Check /> : <Share2 />}
+                                {copied ? <Check className="w-5 h-5 md:w-6 md:h-6" /> : <Share2 className="w-5 h-5 md:w-6 md:h-6" />}
                             </button>
                         </div>
                     </div>
@@ -243,53 +273,53 @@ export default function MovieDetailsPage({ params }) {
             </div>
 
             {/* Content & Recommendations */}
-            <div className="px-8 md:px-16 mt-8 relative z-30">
+            <div className="px-4 sm:px-8 md:px-16 mt-8 relative z-30">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
                     {/* Details Column */}
-                    <div className="lg:col-span-2 space-y-12">
+                    <div className="lg:col-span-2 space-y-8 md:space-y-12">
                         {/* Cast */}
                         <section className="w-full">
-                            <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-                                <div className="w-1 h-8 bg-primary rounded-full" /> Top Cast
+                            <h3 className="text-xl md:text-2xl font-bold text-white mb-4 md:mb-6 flex items-center gap-3">
+                                <div className="w-1 h-6 md:h-8 bg-primary rounded-full" /> Top Cast
                             </h3>
                             <div className="flex flex-wrap gap-4">
                                 <div className="p-4 bg-card rounded-xl border border-white/5 w-full">
-                                    <p className="text-text-secondary italic">Stay tuned for the full cast lineup.</p>
+                                    <p className="text-text-secondary italic text-sm md:text-base">Stay tuned for the full cast lineup.</p>
                                 </div>
                             </div>
                         </section>
 
                         {/* Recommendations */}
                         <section className="w-full">
-                            <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-                                <div className="w-1 h-8 bg-primary rounded-full" /> More Like This
+                            <h3 className="text-xl md:text-2xl font-bold text-white mb-4 md:mb-6 flex items-center gap-3">
+                                <div className="w-1 h-6 md:h-8 bg-primary rounded-full" /> More Like This
                             </h3>
                             {recommendations.length > 0 ? (
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
                                     {recommendations.slice(0, 6).map((rec, i) => (
-                                        <MovieCard key={i} {...rec} />
+                                        <MovieCard key={rec.id || i} {...rec} />
                                     ))}
                                 </div>
                             ) : (
-                                <p className="text-text-secondary">Generating AI recommendations...</p>
+                                <p className="text-text-secondary text-sm md:text-base">Generating AI recommendations...</p>
                             )}
                         </section>
                     </div>
 
                     {/* Meta Sidebar */}
                     <div className="space-y-6 w-full">
-                        <div className="bg-card p-6 rounded-3xl border border-white/5 space-y-6 w-full">
+                        <div className="bg-card p-4 md:p-6 rounded-2xl md:rounded-3xl border border-white/5 space-y-4 md:space-y-6 w-full">
                             <div>
-                                <h4 className="text-text-secondary text-sm font-bold uppercase tracking-wider mb-2">Director</h4>
-                                <p className="text-white font-medium text-lg break-words">{movie.director}</p>
+                                <h4 className="text-text-secondary text-xs md:text-sm font-bold uppercase tracking-wider mb-2">Director</h4>
+                                <p className="text-white font-medium text-base md:text-lg break-words">{movie.director}</p>
                             </div>
                             <div>
-                                <h4 className="text-text-secondary text-sm font-bold uppercase tracking-wider mb-2">Tagline</h4>
-                                <p className="text-white italic break-words">"{movie.tagline}"</p>
+                                <h4 className="text-text-secondary text-xs md:text-sm font-bold uppercase tracking-wider mb-2">Tagline</h4>
+                                <p className="text-white italic text-sm md:text-base break-words">"{movie.tagline}"</p>
                             </div>
                             <div>
-                                <h4 className="text-text-secondary text-sm font-bold uppercase tracking-wider mb-2">Status</h4>
-                                <p className="text-primary font-bold">Released</p>
+                                <h4 className="text-text-secondary text-xs md:text-sm font-bold uppercase tracking-wider mb-2">Status</h4>
+                                <p className="text-primary font-bold text-sm md:text-base">Released</p>
                             </div>
                         </div>
                     </div>

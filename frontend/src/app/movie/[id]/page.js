@@ -78,22 +78,28 @@ export default function MovieDetailsPage({ params }) {
                 const recData = await getRecommendations(details.title);
                 if (recData.movies && recData.posters && recData.movies.length > 0) {
                     // Fetch full movie details for each recommendation to get proper IDs and ratings
-                    const recPromises = recData.movies.slice(0, 10).map(async (title, i) => {
-                        const movieDetails = await searchMovieByTitle(title);
-                        if (movieDetails) {
-                            // Normalize to standard movie interface
-                            return {
-                                id: movieDetails.id,
-                                title: movieDetails.title,
-                                poster_path: movieDetails.poster_path || movieDetails.poster,
-                                poster: movieDetails.poster_path || movieDetails.poster,
-                                vote_average: movieDetails.vote_average || movieDetails.rating,
-                                rating: movieDetails.vote_average || movieDetails.rating,
-                                year: movieDetails.year,
-                                genre: movieDetails.genre || 'Recommended'
-                            };
+                    // Process in smaller batches to avoid overwhelming the server
+                    const recPromises = recData.movies.slice(0, 6).map(async (title, i) => {
+                        try {
+                            const movieDetails = await searchMovieByTitle(title);
+                            if (movieDetails && movieDetails.id && !isNaN(parseInt(movieDetails.id))) {
+                                // Normalize to standard movie interface with valid ID
+                                return {
+                                    id: movieDetails.id,
+                                    title: movieDetails.title,
+                                    poster_path: movieDetails.poster_path || movieDetails.poster,
+                                    poster: movieDetails.poster_path || movieDetails.poster,
+                                    vote_average: movieDetails.vote_average || movieDetails.rating,
+                                    rating: movieDetails.vote_average || movieDetails.rating,
+                                    year: movieDetails.year,
+                                    genre: movieDetails.genre || 'Recommended',
+                                    isValidMovie: true
+                                };
+                            }
+                        } catch (err) {
+                            console.error(`Failed to fetch details for ${title}:`, err);
                         }
-                        // Fallback to poster-only if search fails
+                        // Fallback to poster-only if search fails - mark as invalid for filtering
                         return {
                             id: `rec-${i}-${Date.now()}`,
                             title: title,
@@ -102,13 +108,14 @@ export default function MovieDetailsPage({ params }) {
                             vote_average: 0,
                             rating: 0,
                             year: undefined,
-                            genre: 'Recommended'
+                            genre: 'Recommended',
+                            isValidMovie: false
                         };
                     });
                     
                     const recs = await Promise.all(recPromises);
-                    // Filter out failed recommendations (with rec- prefix) or keep all if none succeeded
-                    const validRecs = recs.filter(rec => !String(rec.id).startsWith('rec-'));
+                    // Filter to only valid movies with real IDs, fallback to all if none succeeded
+                    const validRecs = recs.filter(rec => rec.isValidMovie);
                     setRecommendations(validRecs.length > 0 ? validRecs : recs);
                 }
             }

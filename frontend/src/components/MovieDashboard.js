@@ -118,8 +118,8 @@ export default function MovieDashboard({
                             id: `rec-${i}-${Date.now()}`,
                             title: title,
                             poster: recData.posters[i],
-                            rating: 0,
-                            year: 0,
+                            rating: undefined,
+                            year: undefined,
                             genre: 'Recommended'
                         }));
                         setSmartRecs(recs);

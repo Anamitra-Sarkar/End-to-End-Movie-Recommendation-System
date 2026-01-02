@@ -19,10 +19,13 @@ const MovieCard = ({ id, title, poster, rating, genre, year }) => {
     const { showNotification } = useNotification()
     const { triggerWatchlistAdd } = useSmartNotify()
 
-    // Check if ID is valid (numeric or parseable as number) - memoized to avoid re-parsing
+    // Check if ID is valid (numeric or parseable as number, and greater than 0) - memoized to avoid re-parsing
     const isValidId = useMemo(() => {
+        if (!id) return false;
+        // If ID is a string that starts with 'rec-', it's a recommendation without a real ID
+        if (typeof id === 'string' && id.startsWith('rec-')) return false;
         const parsedId = parseInt(id);
-        return id && !isNaN(parsedId) && parsedId > 0;
+        return !isNaN(parsedId) && parsedId > 0;
     }, [id]);
 
     useEffect(() => {
@@ -143,7 +146,7 @@ const MovieCard = ({ id, title, poster, rating, genre, year }) => {
                 <div className="absolute top-2 left-2 z-10">
                     <div className="bg-primary/90 backdrop-blur-md px-2 py-1 rounded-md flex items-center gap-1 shadow-lg border border-white/10">
                         <Star size={12} className="text-white fill-white" />
-                        <span className="text-xs font-black text-white">{rating ? parseFloat(rating).toFixed(1) : "N/A"}</span>
+                        <span className="text-xs font-black text-white">{rating !== undefined && rating !== null && rating !== '' ? parseFloat(rating).toFixed(1) : "N/A"}</span>
                     </div>
                 </div>
 

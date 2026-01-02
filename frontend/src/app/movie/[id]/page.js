@@ -9,7 +9,9 @@ import MovieCard from '@/components/MovieCard'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
 import { useNotification } from '@/context/NotificationContext'
+import { useSmartNotify } from '@/context/SmartNotifyContext'
 import { addToRecents } from '@/lib/recents'
+import { addToWatchlist, removeFromWatchlist, isInWatchlist } from '@/lib/watchlist'
 
 export default function MovieDetailsPage({ params }) {
     // Unwrap params for Next.js 15+ compatibility
@@ -21,18 +23,35 @@ export default function MovieDetailsPage({ params }) {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [isWatchlisted, setIsWatchlisted] = useState(false)
+    const [isUpdating, setIsUpdating] = useState(false)
     const [copied, setCopied] = useState(false)
     const { user } = useAuth()
     const { showNotification } = useNotification()
+    const { triggerWatchlistAdd } = useSmartNotify()
 
     useEffect(() => {
         if (!id) return;
 
         fetchData();
-        // Check watchlist
-        const saved = JSON.parse(localStorage.getItem('watchlist') || '[]');
-        setIsWatchlisted(saved.some(m => m.id === parseInt(id)));
     }, [id])
+
+    // Check watchlist status when user or id changes
+    useEffect(() => {
+        const checkWatchlistStatus = async () => {
+            if (user?.uid && id) {
+                try {
+                    const inWatchlist = await isInWatchlist(user.uid, parseInt(id))
+                    setIsWatchlisted(inWatchlist)
+                } catch (error) {
+                    console.error('Error checking watchlist:', error)
+                    setIsWatchlisted(false)
+                }
+            } else {
+                setIsWatchlisted(false)
+            }
+        }
+        checkWatchlistStatus()
+    }, [id, user])
 
     const fetchData = async () => {
         setLoading(true);
@@ -60,11 +79,11 @@ export default function MovieDetailsPage({ params }) {
                 if (recData.movies && recData.posters) {
                     // Map arrays to objects for MovieCard
                     const recs = recData.movies.map((title, i) => ({
-                        id: 0,
+                        id: `rec-${i}-${Date.now()}`,
                         title: title,
                         poster: recData.posters[i],
-                        rating: 0,
-                        year: 0,
+                        rating: undefined,
+                        year: undefined,
                         genre: 'Recommendation'
                     }));
                     setRecommendations(recs);
@@ -78,31 +97,44 @@ export default function MovieDetailsPage({ params }) {
         }
     }
 
-    const toggleWatchlist = () => {
+    const toggleWatchlist = async () => {
         if (!movie) return;
+        if (isUpdating) return;
 
-        const saved = JSON.parse(localStorage.getItem('watchlist') || '[]');
-        let newWatchlist;
-
-        if (isWatchlisted) {
-            newWatchlist = saved.filter(m => m.id !== parseInt(id));
-            showNotification(`${movie.title} removed from Watchlist`, 'info');
-        } else {
-            const simpleMovie = {
-                id: movie.id,
-                title: movie.title,
-                poster: movie.poster,
-                rating: movie.rating,
-                genre: movie.genres[0] || 'Movie',
-                year: movie.year
-            };
-            newWatchlist = [...saved, simpleMovie];
-            showNotification(`${movie.title} added to Watchlist! 🎬`, 'success');
+        // Require login for watchlist functionality
+        if (!user?.uid) {
+            showNotification('Please sign in to use the watchlist feature', 'info');
+            return;
         }
 
-        localStorage.setItem('watchlist', JSON.stringify(newWatchlist));
-        setIsWatchlisted(!isWatchlisted);
-        window.dispatchEvent(new Event('storage'));
+        setIsUpdating(true);
+
+        const movieData = {
+            id: movie.id,
+            title: movie.title,
+            poster: movie.poster,
+            rating: movie.rating,
+            genre: movie.genres?.[0] || 'Movie',
+            year: movie.year
+        };
+
+        try {
+            if (isWatchlisted) {
+                await removeFromWatchlist(user.uid, movie.id);
+                showNotification(`${movie.title} removed from Watchlist`, 'info');
+                setIsWatchlisted(false);
+            } else {
+                await addToWatchlist(user.uid, movieData);
+                showNotification(`${movie.title} added to Watchlist! 🎬`, 'success');
+                triggerWatchlistAdd(movie.title);
+                setIsWatchlisted(true);
+            }
+        } catch (error) {
+            console.error('Watchlist error:', error);
+            showNotification('Failed to update watchlist. Please try again.', 'error');
+        } finally {
+            setIsUpdating(false);
+        }
     }
 
     const handleShare = async () => {
@@ -185,7 +217,12 @@ export default function MovieDetailsPage({ params }) {
                             </button>
                             <button
                                 onClick={toggleWatchlist}
-                                className={cn("p-4 rounded-2xl border-2 transition-all active:scale-95", isWatchlisted ? "bg-red-500 border-red-500 text-white" : "border-white/20 text-white hover:bg-white/10")}
+                                disabled={isUpdating}
+                                className={cn(
+                                    "p-4 rounded-2xl border-2 transition-all active:scale-95",
+                                    isWatchlisted ? "bg-red-500 border-red-500 text-white" : "border-white/20 text-white hover:bg-white/10",
+                                    isUpdating && "opacity-50 cursor-wait"
+                                )}
                             >
                                 <Heart fill={isWatchlisted ? "currentColor" : "none"} />
                             </button>

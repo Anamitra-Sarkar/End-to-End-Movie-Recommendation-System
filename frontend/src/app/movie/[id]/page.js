@@ -137,13 +137,13 @@ export default function MovieDetailsPage({ params }) {
     return (
         <div className="min-h-full pb-20">
             {/* Hero Backdrop */}
-            <div className="relative min-h-[70vh] w-full overflow-hidden">
+            <div className="relative w-full overflow-hidden" style={{ height: '600px' }}>
                 <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent z-10" />
                 <div className="absolute inset-0 bg-gradient-to-r from-background via-background/40 to-transparent z-10" />
                 <img
                     src={movie.poster ? movie.poster.replace('w500', 'original') : "https://placehold.co/1920x1080?text=No+Backdrop"}
                     alt={movie.title}
-                    className="w-full h-full object-cover opacity-60"
+                    className="absolute inset-0 w-full h-full object-cover opacity-60"
                 />
 
                 <div className="absolute inset-0 z-20 flex items-center px-8 md:px-16">

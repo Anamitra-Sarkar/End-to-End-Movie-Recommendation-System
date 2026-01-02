@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Star, Heart, Film } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
@@ -19,9 +19,11 @@ const MovieCard = ({ id, title, poster, rating, genre, year }) => {
     const { showNotification } = useNotification()
     const { triggerWatchlistAdd } = useSmartNotify()
 
-    // Check if ID is valid (numeric or parseable as number)
-    const parsedId = parseInt(id);
-    const isValidId = id && !isNaN(parsedId) && parsedId > 0;
+    // Check if ID is valid (numeric or parseable as number) - memoized to avoid re-parsing
+    const isValidId = useMemo(() => {
+        const parsedId = parseInt(id);
+        return id && !isNaN(parsedId) && parsedId > 0;
+    }, [id]);
 
     useEffect(() => {
         // Check if movie is in watchlist - only for valid IDs

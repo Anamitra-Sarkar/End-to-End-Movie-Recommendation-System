@@ -37,7 +37,7 @@ export default function MovieRow({ title, params, mockData }) {
         }).finally(() => {
             setLoading(false)
         })
-    }, [title])
+    }, [title, params, mockData])
 
     const scroll = (direction) => {
         if (rowRef.current) {

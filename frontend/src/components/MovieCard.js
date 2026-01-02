@@ -20,7 +20,8 @@ const MovieCard = ({ id, title, poster, rating, genre, year }) => {
     const { triggerWatchlistAdd } = useSmartNotify()
 
     // Check if ID is valid (numeric or parseable as number)
-    const isValidId = id && !isNaN(parseInt(id)) && parseInt(id) > 0;
+    const parsedId = parseInt(id);
+    const isValidId = id && !isNaN(parsedId) && parsedId > 0;
 
     useEffect(() => {
         // Check if movie is in watchlist - only for valid IDs

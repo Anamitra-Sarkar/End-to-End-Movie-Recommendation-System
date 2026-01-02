@@ -36,6 +36,8 @@ const SORTS = [
     { label: "Newest", value: "release_date.desc" }
 ];
 
+const SKELETON_COUNT = 6; // Number of skeleton cards to show while loading
+
 export default function MovieDashboard({
     initialFilters = {},
     title = "Trending Now",
@@ -312,7 +314,7 @@ export default function MovieDashboard({
                                         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                                     >
                                         {loadingRecents ? (
-                                            Array.from({ length: 6 }).map((_, index) => (
+                                            Array.from({ length: SKELETON_COUNT }).map((_, index) => (
                                                 <div key={index} className="w-[160px] md:w-[200px] flex-shrink-0">
                                                     <MovieCardSkeleton />
                                                 </div>
@@ -359,7 +361,7 @@ export default function MovieDashboard({
                                         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                                     >
                                         {loadingRecs ? (
-                                            Array.from({ length: 6 }).map((_, index) => (
+                                            Array.from({ length: SKELETON_COUNT }).map((_, index) => (
                                                 <div key={index} className="w-[160px] md:w-[200px] flex-shrink-0">
                                                     <MovieCardSkeleton />
                                                 </div>

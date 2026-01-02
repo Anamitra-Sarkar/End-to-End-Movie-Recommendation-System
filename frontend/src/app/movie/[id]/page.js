@@ -144,7 +144,6 @@ export default function MovieDetailsPage({ params }) {
                     src={movie.poster ? movie.poster.replace('w500', 'original') : "https://placehold.co/1920x1080?text=No+Backdrop"}
                     alt={movie.title}
                     className="absolute inset-0 w-full h-full object-cover opacity-60"
-                    style={{ objectFit: 'cover', objectPosition: 'center' }}
                 />
 
                 <div className="absolute inset-0 z-20 flex items-center px-8 md:px-16">

@@ -16,6 +16,8 @@ const DEFAULT_MOCK = [
     { id: 680, title: "Pulp Fiction", poster: "https://image.tmdb.org/t/p/w500/fIE3lAGcZDV1G6XM5KmuWnNsPp1.jpg", rating: 8.5, genre: "Crime", year: 1994 },
 ];
 
+const SKELETON_COUNT = 6; // Number of skeleton cards to show while loading
+
 export default function MovieRow({ title, params, mockData }) {
     const [movies, setMovies] = useState([])
     const [loading, setLoading] = useState(true)
@@ -77,7 +79,7 @@ export default function MovieRow({ title, params, mockData }) {
                 >
                     {loading ? (
                         // Show skeletons while loading
-                        Array.from({ length: 6 }).map((_, index) => (
+                        Array.from({ length: SKELETON_COUNT }).map((_, index) => (
                             <div key={index} className="w-[160px] md:w-[200px] flex-shrink-0">
                                 <MovieCardSkeleton />
                             </div>

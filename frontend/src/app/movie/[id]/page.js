@@ -82,7 +82,7 @@ export default function MovieDetailsPage({ params }) {
                         // Fetch full movie details for each recommendation to get proper IDs and ratings
                         const recPromises = recData.movies.slice(0, 6).map(async (title) => {
                             try {
-                                const movieDetails = await searchMovieByTitle(title);
+                                 const movieDetails = await searchMovieByTitle(title);
                                 if (movieDetails && movieDetails.id && !isNaN(parseInt(movieDetails.id))) {
                                     // Only return valid movies with real IDs
                                     return {
@@ -97,7 +97,7 @@ export default function MovieDetailsPage({ params }) {
                                     };
                                 }
                             } catch (err) {
-                                console.error(`Failed to fetch details for ${title}:`, err);
+                                // Silently skip failed recommendation fetches
                             }
                             return null;
                         });
@@ -108,8 +108,8 @@ export default function MovieDetailsPage({ params }) {
                         setRecommendations(validRecs);
                     }
                 } catch (err) {
-                    console.error('Error fetching recommendations:', err);
-                    // Don't set recommendations on error - leave it empty
+                    // Silently fail - recommendations are optional
+                    // Error is already logged in the API service
                     setRecommendations([]);
                 }
             }

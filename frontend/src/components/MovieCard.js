@@ -19,10 +19,13 @@ const MovieCard = ({ id, title, poster, rating, genre, year }) => {
     const { showNotification } = useNotification()
     const { triggerWatchlistAdd } = useSmartNotify()
 
+    // Check if ID is valid (numeric or parseable as number)
+    const isValidId = id && !isNaN(parseInt(id)) && parseInt(id) > 0;
+
     useEffect(() => {
-        // Check if movie is in watchlist
+        // Check if movie is in watchlist - only for valid IDs
         const checkWatchlist = async () => {
-            if (user?.uid && id) {
+            if (user?.uid && isValidId) {
                 try {
                     const inWatchlist = await isInWatchlist(user.uid, id)
                     setIsWatchlisted(inWatchlist)
@@ -35,7 +38,7 @@ const MovieCard = ({ id, title, poster, rating, genre, year }) => {
             }
         }
         checkWatchlist()
-    }, [id, user])
+    }, [id, user, isValidId])
 
     useEffect(() => {
         if (poster) {
@@ -79,12 +82,18 @@ const MovieCard = ({ id, title, poster, rating, genre, year }) => {
         }
     }
 
+    const CardWrapper = isValidId ? Link : 'div';
+    const wrapperProps = isValidId ? { href: `/movie/${id}` } : {};
+
     return (
-        <Link href={id ? `/movie/${id}` : '#'}>
+        <CardWrapper {...wrapperProps}>
             <motion.div
                 whileHover={{ y: -8, scale: 1.05 }}
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                className="relative group rounded-xl overflow-hidden cursor-pointer bg-card border border-white/5 shadow-2xl aspect-[2/3]"
+                className={cn(
+                    "relative group rounded-xl overflow-hidden bg-card border border-white/5 shadow-2xl aspect-[2/3]",
+                    isValidId ? "cursor-pointer" : "cursor-default"
+                )}
             >
                 {/* Poster Image or Fallback */}
                 {imageError || !imgSrc ? (
@@ -148,7 +157,7 @@ const MovieCard = ({ id, title, poster, rating, genre, year }) => {
                 {/* Hover Glow */}
                 <div className="absolute inset-0 border-2 border-primary/0 group-hover:border-primary/40 rounded-xl transition-all pointer-events-none shadow-[inset_0_0_20px_rgba(37,99,235,0.2)]" />
             </motion.div>
-        </Link>
+        </CardWrapper>
     )
 }
 

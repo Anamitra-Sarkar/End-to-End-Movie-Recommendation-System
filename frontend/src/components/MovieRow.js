@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import MovieCard from './MovieCard'
+import MovieCardSkeleton from './MovieCardSkeleton'
 import { getMovies } from '@/services/api'
 
 // Default mock movies for fallback
@@ -17,9 +18,11 @@ const DEFAULT_MOCK = [
 
 export default function MovieRow({ title, params, mockData }) {
     const [movies, setMovies] = useState([])
+    const [loading, setLoading] = useState(true)
     const rowRef = useRef(null)
 
     useEffect(() => {
+        setLoading(true)
         getMovies({ ...params, limit: 15 }).then(data => {
             if (data.movies && data.movies.length > 0) {
                 setMovies(data.movies)
@@ -29,6 +32,8 @@ export default function MovieRow({ title, params, mockData }) {
         }).catch(err => {
             console.error(`MovieRow [${title}] failed:`, err);
             setMovies(mockData || DEFAULT_MOCK);
+        }).finally(() => {
+            setLoading(false)
         })
     }, [title])
 
@@ -40,8 +45,6 @@ export default function MovieRow({ title, params, mockData }) {
         }
     }
 
-    if (movies.length === 0) return null;
-
     return (
         <div className="mb-8 group/row">
             <h2 className="text-xl font-bold text-white mb-4 px-2 flex items-center gap-2">
@@ -50,31 +53,44 @@ export default function MovieRow({ title, params, mockData }) {
             </h2>
 
             <div className="relative group/slider">
-                <button
-                    onClick={() => scroll('left')}
-                    className="absolute left-0 top-0 bottom-0 w-12 bg-black/50 hover:bg-black/70 flex items-center justify-center z-20 opacity-0 group-hover/slider:opacity-100 transition-all duration-300 backdrop-blur-sm cursor-pointer rounded-l-xl"
-                >
-                    <ChevronLeft className="text-white" size={32} />
-                </button>
+                {!loading && (
+                    <>
+                        <button
+                            onClick={() => scroll('left')}
+                            className="absolute left-0 top-0 bottom-0 w-12 bg-black/50 hover:bg-black/70 flex items-center justify-center z-20 opacity-0 group-hover/slider:opacity-100 transition-all duration-300 backdrop-blur-sm cursor-pointer rounded-l-xl"
+                        >
+                            <ChevronLeft className="text-white" size={32} />
+                        </button>
+                        <button
+                            onClick={() => scroll('right')}
+                            className="absolute right-0 top-0 bottom-0 w-12 bg-black/50 hover:bg-black/70 flex items-center justify-center z-20 opacity-0 group-hover/slider:opacity-100 transition-all duration-300 backdrop-blur-sm cursor-pointer rounded-r-xl"
+                        >
+                            <ChevronRight className="text-white" size={32} />
+                        </button>
+                    </>
+                )}
 
                 <div
                     ref={rowRef}
                     className="flex gap-4 overflow-x-auto px-2 pb-4 scroll-smooth"
                     style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                 >
-                    {movies.map((movie, index) => (
-                        <div key={movie.id || index} className="w-[160px] md:w-[200px] flex-shrink-0">
-                            <MovieCard {...movie} />
-                        </div>
-                    ))}
+                    {loading ? (
+                        // Show skeletons while loading
+                        Array.from({ length: 6 }).map((_, index) => (
+                            <div key={index} className="w-[160px] md:w-[200px] flex-shrink-0">
+                                <MovieCardSkeleton />
+                            </div>
+                        ))
+                    ) : (
+                        // Show actual movies
+                        movies.map((movie, index) => (
+                            <div key={movie.id || index} className="w-[160px] md:w-[200px] flex-shrink-0">
+                                <MovieCard {...movie} />
+                            </div>
+                        ))
+                    )}
                 </div>
-
-                <button
-                    onClick={() => scroll('right')}
-                    className="absolute right-0 top-0 bottom-0 w-12 bg-black/50 hover:bg-black/70 flex items-center justify-center z-20 opacity-0 group-hover/slider:opacity-100 transition-all duration-300 backdrop-blur-sm cursor-pointer rounded-r-xl"
-                >
-                    <ChevronRight className="text-white" size={32} />
-                </button>
             </div>
         </div>
     )

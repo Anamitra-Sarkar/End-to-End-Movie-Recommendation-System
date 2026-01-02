@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Search, Loader2, ChevronDown } from 'lucide-react'
+import { Search, Loader2, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import MovieCard from '@/components/MovieCard'
+import MovieCardSkeleton from '@/components/MovieCardSkeleton'
 import MovieRow from '@/components/MovieRow'
 import { getSuggestions, getMovies, getRecommendations } from '@/services/api'
 import { cn } from '@/lib/utils'
@@ -58,7 +59,11 @@ export default function MovieDashboard({
     const [recents, setRecents] = useState([])
     const [smartRecs, setSmartRecs] = useState([])
     const [hasRecents, setHasRecents] = useState(false)
+    const [loadingRecents, setLoadingRecents] = useState(true)
+    const [loadingRecs, setLoadingRecs] = useState(true)
     const dropdownRef = useRef(null)
+    const recentsRowRef = useRef(null)
+    const recsRowRef = useRef(null)
     const { user } = useAuth()
 
     useEffect(() => {
@@ -91,11 +96,15 @@ export default function MovieDashboard({
     }, [mode, user]);
 
     const loadRecentsAndRecommendations = async () => {
+        setLoadingRecents(true);
+        setLoadingRecs(true);
+        
         try {
             // Load recents
             const recentMovies = await getRecents(user?.uid || null);
             setRecents(recentMovies);
             setHasRecents(recentMovies.length > 0);
+            setLoadingRecents(false);
 
             // Load smart recommendations based on last viewed
             const lastViewed = await getLastViewed(user?.uid || null);
@@ -115,10 +124,16 @@ export default function MovieDashboard({
                     }
                 } catch (err) {
                     console.error('Failed to fetch smart recommendations:', err);
+                } finally {
+                    setLoadingRecs(false);
                 }
+            } else {
+                setLoadingRecs(false);
             }
         } catch (err) {
             console.error('Failed to load recents:', err);
+            setLoadingRecents(false);
+            setLoadingRecs(false);
         }
     };
 
@@ -174,6 +189,14 @@ export default function MovieDashboard({
             filtered = filtered.filter(m => m.title.toLowerCase().includes(filters.search.toLowerCase()));
         }
         return filtered.length > 0 ? filtered : MOCK_MOVIES;
+    }
+
+    const scrollRow = (rowRef, direction) => {
+        if (rowRef.current) {
+            const { scrollLeft, clientWidth } = rowRef.current;
+            const scrollTo = direction === 'left' ? scrollLeft - clientWidth / 2 : scrollLeft + clientWidth / 2;
+            rowRef.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
+        }
     }
 
     const handleSearchInput = (e) => {
@@ -259,36 +282,96 @@ export default function MovieDashboard({
 
                 {mode === 'home' && !filters.search ? (
                     <div className="space-y-12 animate-in fade-in duration-700">
-                        {/* Recently Watched - Only show if user has recents */}
-                        {hasRecents && recents.length > 0 && (
+                        {/* Recently Watched - Show if user has recents or loading */}
+                        {(loadingRecents || (hasRecents && recents.length > 0)) && (
                             <div className="mb-8 group/row">
                                 <h2 className="text-xl font-bold text-white mb-4 px-2 flex items-center gap-2">
                                     <div className="w-1 h-6 bg-primary rounded-full" />
                                     Recently Watched
                                 </h2>
-                                <div className="flex gap-4 overflow-x-auto px-2 pb-4 scroll-smooth" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                                    {recents.slice(0, 10).map((movie, index) => (
-                                        <div key={movie.id || index} className="w-[160px] md:w-[200px] flex-shrink-0">
-                                            <MovieCard {...movie} />
-                                        </div>
-                                    ))}
+                                <div className="relative group/slider">
+                                    {!loadingRecents && (
+                                        <>
+                                            <button
+                                                onClick={() => scrollRow(recentsRowRef, 'left')}
+                                                className="absolute left-0 top-0 bottom-0 w-12 bg-black/50 hover:bg-black/70 flex items-center justify-center z-20 opacity-0 group-hover/slider:opacity-100 transition-all duration-300 backdrop-blur-sm cursor-pointer rounded-l-xl"
+                                            >
+                                                <ChevronLeft className="text-white" size={32} />
+                                            </button>
+                                            <button
+                                                onClick={() => scrollRow(recentsRowRef, 'right')}
+                                                className="absolute right-0 top-0 bottom-0 w-12 bg-black/50 hover:bg-black/70 flex items-center justify-center z-20 opacity-0 group-hover/slider:opacity-100 transition-all duration-300 backdrop-blur-sm cursor-pointer rounded-r-xl"
+                                            >
+                                                <ChevronRight className="text-white" size={32} />
+                                            </button>
+                                        </>
+                                    )}
+                                    <div
+                                        ref={recentsRowRef}
+                                        className="flex gap-4 overflow-x-auto px-2 pb-4 scroll-smooth"
+                                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                                    >
+                                        {loadingRecents ? (
+                                            Array.from({ length: 6 }).map((_, index) => (
+                                                <div key={index} className="w-[160px] md:w-[200px] flex-shrink-0">
+                                                    <MovieCardSkeleton />
+                                                </div>
+                                            ))
+                                        ) : (
+                                            recents.slice(0, 10).map((movie, index) => (
+                                                <div key={movie.id || index} className="w-[160px] md:w-[200px] flex-shrink-0">
+                                                    <MovieCard {...movie} />
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         )}
                         
-                        {/* Smart Recommendations - Only show if we have recents and smart recs */}
-                        {hasRecents && smartRecs.length > 0 && (
+                        {/* Smart Recommendations - Show if loading or if we have recents and smart recs */}
+                        {(loadingRecs || (hasRecents && smartRecs.length > 0)) && (
                             <div className="mb-8 group/row">
                                 <h2 className="text-xl font-bold text-white mb-4 px-2 flex items-center gap-2">
                                     <div className="w-1 h-6 bg-primary rounded-full" />
                                     Recommended for You
                                 </h2>
-                                <div className="flex gap-4 overflow-x-auto px-2 pb-4 scroll-smooth" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                                    {smartRecs.slice(0, 10).map((movie, index) => (
-                                        <div key={movie.id || index} className="w-[160px] md:w-[200px] flex-shrink-0">
-                                            <MovieCard {...movie} />
-                                        </div>
-                                    ))}
+                                <div className="relative group/slider">
+                                    {!loadingRecs && (
+                                        <>
+                                            <button
+                                                onClick={() => scrollRow(recsRowRef, 'left')}
+                                                className="absolute left-0 top-0 bottom-0 w-12 bg-black/50 hover:bg-black/70 flex items-center justify-center z-20 opacity-0 group-hover/slider:opacity-100 transition-all duration-300 backdrop-blur-sm cursor-pointer rounded-l-xl"
+                                            >
+                                                <ChevronLeft className="text-white" size={32} />
+                                            </button>
+                                            <button
+                                                onClick={() => scrollRow(recsRowRef, 'right')}
+                                                className="absolute right-0 top-0 bottom-0 w-12 bg-black/50 hover:bg-black/70 flex items-center justify-center z-20 opacity-0 group-hover/slider:opacity-100 transition-all duration-300 backdrop-blur-sm cursor-pointer rounded-r-xl"
+                                            >
+                                                <ChevronRight className="text-white" size={32} />
+                                            </button>
+                                        </>
+                                    )}
+                                    <div
+                                        ref={recsRowRef}
+                                        className="flex gap-4 overflow-x-auto px-2 pb-4 scroll-smooth"
+                                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                                    >
+                                        {loadingRecs ? (
+                                            Array.from({ length: 6 }).map((_, index) => (
+                                                <div key={index} className="w-[160px] md:w-[200px] flex-shrink-0">
+                                                    <MovieCardSkeleton />
+                                                </div>
+                                            ))
+                                        ) : (
+                                            smartRecs.slice(0, 10).map((movie, index) => (
+                                                <div key={movie.id || index} className="w-[160px] md:w-[200px] flex-shrink-0">
+                                                    <MovieCard {...movie} />
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         )}

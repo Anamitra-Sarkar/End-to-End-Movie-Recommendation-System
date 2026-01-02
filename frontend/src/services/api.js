@@ -47,7 +47,12 @@ export const getRecommendations = async (movieTitle) => {
         const response = await api.post('/recommend', { movie_title: movieTitle });
         return response.data;
     } catch (error) {
-        console.error("Error fetching recommendations:", error);
+        // Log detailed error information
+        if (error.response?.status === 404) {
+            console.warn(`Movie "${movieTitle}" not found in recommendation database`);
+        } else {
+            console.error("Error fetching recommendations:", error.message || error);
+        }
         throw error;
     }
 };

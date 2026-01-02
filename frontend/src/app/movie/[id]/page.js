@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, use } from 'react'
 import { Star, Calendar, Clock, Play, Heart, Share2, ArrowLeft, Check } from 'lucide-react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { getMovieDetails, getRecommendations, searchMovieByTitle } from '@/services/api'
 import MovieCard from '@/components/MovieCard'
@@ -18,6 +18,7 @@ export default function MovieDetailsPage({ params }) {
     const resolvedParams = use(params);
     const id = resolvedParams.id;
 
+    const router = useRouter()
     const [movie, setMovie] = useState(null)
     const [recommendations, setRecommendations] = useState([])
     const [loading, setLoading] = useState(true)
@@ -75,48 +76,42 @@ export default function MovieDetailsPage({ params }) {
 
             // 3. Get Recommendations based on title
             if (details.title) {
-                const recData = await getRecommendations(details.title);
-                if (recData.movies && recData.posters && recData.movies.length > 0) {
-                    // Fetch full movie details for each recommendation to get proper IDs and ratings
-                    // Process in smaller batches to avoid overwhelming the server
-                    const recPromises = recData.movies.slice(0, 6).map(async (title, i) => {
-                        try {
-                            const movieDetails = await searchMovieByTitle(title);
-                            if (movieDetails && movieDetails.id && !isNaN(parseInt(movieDetails.id))) {
-                                // Normalize to standard movie interface with valid ID
-                                return {
-                                    id: movieDetails.id,
-                                    title: movieDetails.title,
-                                    poster_path: movieDetails.poster_path || movieDetails.poster,
-                                    poster: movieDetails.poster_path || movieDetails.poster,
-                                    vote_average: movieDetails.vote_average || movieDetails.rating,
-                                    rating: movieDetails.vote_average || movieDetails.rating,
-                                    year: movieDetails.year,
-                                    genre: movieDetails.genre || 'Recommended',
-                                    isValidMovie: true
-                                };
+                try {
+                    const recData = await getRecommendations(details.title);
+                    if (recData.movies && recData.posters && recData.movies.length > 0) {
+                        // Fetch full movie details for each recommendation to get proper IDs and ratings
+                        const recPromises = recData.movies.slice(0, 6).map(async (title) => {
+                            try {
+                                const movieDetails = await searchMovieByTitle(title);
+                                if (movieDetails && movieDetails.id && !isNaN(parseInt(movieDetails.id))) {
+                                    // Only return valid movies with real IDs
+                                    return {
+                                        id: movieDetails.id,
+                                        title: movieDetails.title,
+                                        poster_path: movieDetails.poster_path || movieDetails.poster,
+                                        poster: movieDetails.poster_path || movieDetails.poster,
+                                        vote_average: movieDetails.vote_average || movieDetails.rating,
+                                        rating: movieDetails.vote_average || movieDetails.rating,
+                                        year: movieDetails.year,
+                                        genre: movieDetails.genre || 'Recommended'
+                                    };
+                                }
+                            } catch (err) {
+                                // Silently skip failed recommendation fetches
                             }
-                        } catch (err) {
-                            console.error(`Failed to fetch details for ${title}:`, err);
-                        }
-                        // Fallback to poster-only if search fails - mark as invalid for filtering
-                        return {
-                            id: `rec-${i}-${Date.now()}`,
-                            title: title,
-                            poster_path: recData.posters[i],
-                            poster: recData.posters[i],
-                            vote_average: 0,
-                            rating: 0,
-                            year: undefined,
-                            genre: 'Recommended',
-                            isValidMovie: false
-                        };
-                    });
-                    
-                    const recs = await Promise.all(recPromises);
-                    // Filter to only valid movies with real IDs, fallback to all if none succeeded
-                    const validRecs = recs.filter(rec => rec.isValidMovie);
-                    setRecommendations(validRecs.length > 0 ? validRecs : recs);
+                            // Return null for failed fetches - filtered out later
+                            return null;
+                        });
+                        
+                        const recs = await Promise.all(recPromises);
+                        // Filter out null values (failed fetches) - only show valid movies
+                        const validRecs = recs.filter(rec => rec !== null);
+                        setRecommendations(validRecs);
+                    }
+                } catch (err) {
+                    // Silently fail - recommendations are optional
+                    // Error is already logged in the API service
+                    setRecommendations([]);
                 }
             }
         } catch (err) {
@@ -183,6 +178,11 @@ export default function MovieDetailsPage({ params }) {
         }
     }
 
+    const handleBackToBrowse = () => {
+        // Use deterministic routing - always go to browse page
+        router.push('/browse')
+    }
+
     if (loading) return (
         <div className="min-h-screen flex items-center justify-center">
             <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -192,32 +192,40 @@ export default function MovieDetailsPage({ params }) {
     if (error || !movie) return (
         <div className="min-h-screen flex flex-col items-center justify-center text-text-secondary">
             <h1 className="text-2xl font-bold mb-4">Signal Lost</h1>
-            <Link href="/" className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">Return to Base</Link>
+            <button 
+                onClick={() => router.push('/browse')}
+                className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+            >
+                Return to Base
+            </button>
         </div>
     )
 
     return (
         <div className="min-h-full pb-20">
             {/* Hero Backdrop */}
-            <div className="relative w-full overflow-hidden min-h-[500px] md:min-h-[600px]">
+            <div className="relative w-full overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent z-10" />
                 <div className="absolute inset-0 bg-gradient-to-r from-background via-background/40 to-transparent z-10" />
                 <img
                     src={movie.poster ? movie.poster.replace('w500', 'original') : "https://placehold.co/1920x1080?text=No+Backdrop"}
                     alt={movie.title}
-                    className="absolute inset-0 w-full h-full object-cover opacity-60"
+                    className="absolute inset-0 w-full h-full object-cover opacity-60 min-h-[600px]"
                 />
 
-                <div className="absolute inset-0 z-20 flex items-end md:items-center px-4 sm:px-8 md:px-16">
-                    <div className="max-w-3xl w-full pt-20 pb-8">
-                        <Link href="/" className="inline-flex items-center gap-2 text-text-secondary hover:text-white mb-4 md:mb-6 transition-colors">
+                <div className="relative z-20 px-4 sm:px-8 md:px-16 pt-20 pb-16 md:pb-24">
+                    <div className="max-w-4xl w-full">
+                        <button 
+                            onClick={handleBackToBrowse}
+                            className="inline-flex items-center gap-2 text-text-secondary hover:text-white mb-4 md:mb-6 transition-colors cursor-pointer"
+                        >
                             <ArrowLeft size={20} /> Back to Browse
-                        </Link>
+                        </button>
 
                         <motion.h1
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black text-white mb-3 md:mb-4 leading-tight tracking-tight break-words"
+                            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4 md:mb-6 leading-tight tracking-tight break-words"
                         >
                             {movie.title}
                         </motion.h1>
@@ -237,11 +245,11 @@ export default function MovieDetailsPage({ params }) {
                             ))}
                         </div>
 
-                        <p className="text-sm sm:text-base md:text-lg text-gray-300 mb-6 md:mb-10 leading-relaxed max-w-2xl line-clamp-3 md:line-clamp-4">
+                        <p className="text-sm sm:text-base md:text-lg text-gray-300 mb-8 md:mb-12 leading-relaxed max-w-3xl line-clamp-4">
                             {movie.overview}
                         </p>
 
-                        <div className="flex items-center flex-wrap gap-3 md:gap-4">
+                        <div className="flex items-center flex-wrap gap-3 md:gap-4 pb-8">
                             <button className="flex items-center gap-2 md:gap-3 px-5 md:px-8 py-3 md:py-4 bg-primary hover:bg-primary/90 text-white rounded-xl md:rounded-2xl font-bold text-base md:text-lg transition-transform active:scale-95 shadow-lg shadow-primary/25">
                                 <Play fill="currentColor" className="w-4 h-4 md:w-5 md:h-5" /> Coming Soon
                             </button>
@@ -273,7 +281,7 @@ export default function MovieDetailsPage({ params }) {
             </div>
 
             {/* Content & Recommendations */}
-            <div className="px-4 sm:px-8 md:px-16 mt-8 relative z-30">
+            <div className="px-4 sm:px-8 md:px-16 py-8 md:py-12">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
                     {/* Details Column */}
                     <div className="lg:col-span-2 space-y-8 md:space-y-12">
@@ -296,12 +304,14 @@ export default function MovieDetailsPage({ params }) {
                             </h3>
                             {recommendations.length > 0 ? (
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                                    {recommendations.slice(0, 6).map((rec, i) => (
-                                        <MovieCard key={rec.id || i} {...rec} />
+                                    {recommendations.map((rec) => (
+                                        <MovieCard key={rec.id} {...rec} />
                                     ))}
                                 </div>
                             ) : (
-                                <p className="text-text-secondary text-sm md:text-base">Generating AI recommendations...</p>
+                                <div className="p-4 bg-card rounded-xl border border-white/5">
+                                    <p className="text-text-secondary text-sm md:text-base">No recommendations available at this time.</p>
+                                </div>
                             )}
                         </section>
                     </div>

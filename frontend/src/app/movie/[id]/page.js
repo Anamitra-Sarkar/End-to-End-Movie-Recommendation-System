@@ -82,7 +82,7 @@ export default function MovieDetailsPage({ params }) {
                         // Fetch full movie details for each recommendation to get proper IDs and ratings
                         const recPromises = recData.movies.slice(0, 6).map(async (title) => {
                             try {
-                                 const movieDetails = await searchMovieByTitle(title);
+                                const movieDetails = await searchMovieByTitle(title);
                                 if (movieDetails && movieDetails.id && !isNaN(parseInt(movieDetails.id))) {
                                     // Only return valid movies with real IDs
                                     return {
@@ -99,6 +99,7 @@ export default function MovieDetailsPage({ params }) {
                             } catch (err) {
                                 // Silently skip failed recommendation fetches
                             }
+                            // Return null for failed fetches - filtered out later
                             return null;
                         });
                         
@@ -209,8 +210,7 @@ export default function MovieDetailsPage({ params }) {
                 <img
                     src={movie.poster ? movie.poster.replace('w500', 'original') : "https://placehold.co/1920x1080?text=No+Backdrop"}
                     alt={movie.title}
-                    className="absolute inset-0 w-full h-full object-cover opacity-60"
-                    style={{ minHeight: '600px' }}
+                    className="absolute inset-0 w-full h-full object-cover opacity-60 min-h-[600px]"
                 />
 
                 <div className="relative z-20 px-4 sm:px-8 md:px-16 pt-20 pb-16 md:pb-24">
@@ -226,7 +226,6 @@ export default function MovieDetailsPage({ params }) {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4 md:mb-6 leading-tight tracking-tight break-words"
-                            style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
                         >
                             {movie.title}
                         </motion.h1>

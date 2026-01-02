@@ -3,14 +3,18 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronRight, Pencil } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useNotification } from '@/context/NotificationContext';
 import { useRouter } from 'next/navigation';
+
+const DEFAULT_HANDLE = "CineUser";
 
 export default function ProfilePage() {
     const { user, isLoading } = useAuth();
+    const { showNotification } = useNotification();
     const router = useRouter();
 
     const [name, setName] = useState("");
-    const [handle, setHandle] = useState("CineUser");
+    const [handle, setHandle] = useState(DEFAULT_HANDLE);
     const [email, setEmail] = useState("");
 
     // Route Protection & Data Sync
@@ -22,7 +26,7 @@ export default function ProfilePage() {
             setName(user.displayName || user.email?.split('@')[0] || "");
             setEmail(user.email || "");
             // Generate handle from display name
-            setHandle(user.displayName?.replace(/\s+/g, '') || user.email?.split('@')[0] || "CineUser");
+            setHandle(user.displayName?.replace(/\s+/g, '') || user.email?.split('@')[0] || DEFAULT_HANDLE);
         }
     }, [user, isLoading, router]);
 
@@ -35,7 +39,7 @@ export default function ProfilePage() {
     const handleSave = () => {
         // Note: Updating Firebase user profile requires additional implementation
         // For now, show a notification that profile updates require re-authentication
-        alert('Profile saved locally. Full profile editing coming soon!');
+        showNotification('Profile saved locally. Full profile editing coming soon!', 'info');
     };
 
     return (

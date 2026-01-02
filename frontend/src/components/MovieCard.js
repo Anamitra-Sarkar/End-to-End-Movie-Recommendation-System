@@ -10,9 +10,11 @@ import { useNotification } from '@/context/NotificationContext'
 import { useSmartNotify } from '@/context/SmartNotifyContext'
 import { addToWatchlist, removeFromWatchlist, isInWatchlist } from '@/lib/watchlist'
 
-const MovieCard = ({ id, title, poster, rating, genre, year }) => {
+const MovieCard = ({ id, title, poster, poster_path, rating, vote_average, genre, year }) => {
     const [imageError, setImageError] = useState(false)
-    const [imgSrc, setImgSrc] = useState(poster)
+    const posterUrl = poster_path || poster;
+    const movieRating = vote_average !== undefined ? vote_average : rating;
+    const [imgSrc, setImgSrc] = useState(posterUrl)
     const [isWatchlisted, setIsWatchlisted] = useState(false)
     const [isUpdating, setIsUpdating] = useState(false)
     const { user } = useAuth()
@@ -47,11 +49,11 @@ const MovieCard = ({ id, title, poster, rating, genre, year }) => {
     }, [id, user, isValidId])
 
     useEffect(() => {
-        if (poster) {
-            setImgSrc(poster);
+        if (posterUrl) {
+            setImgSrc(posterUrl);
             setImageError(false);
         }
-    }, [poster]);
+    }, [posterUrl]);
 
     const toggleWatchlist = async (e) => {
         e.stopPropagation();
@@ -67,7 +69,7 @@ const MovieCard = ({ id, title, poster, rating, genre, year }) => {
 
         setIsUpdating(true);
 
-        const movie = { id, title, poster, rating, genre, year };
+        const movie = { id, title, poster: posterUrl, rating: movieRating, genre, year };
 
         try {
             if (isWatchlisted) {
@@ -146,7 +148,7 @@ const MovieCard = ({ id, title, poster, rating, genre, year }) => {
                 <div className="absolute top-2 left-2 z-10">
                     <div className="bg-primary/90 backdrop-blur-md px-2 py-1 rounded-md flex items-center gap-1 shadow-lg border border-white/10">
                         <Star size={12} className="text-white fill-white" />
-                        <span className="text-xs font-black text-white">{rating !== undefined && rating !== null && rating !== '' ? parseFloat(rating).toFixed(1) : "N/A"}</span>
+                        <span className="text-xs font-black text-white">{movieRating !== undefined && movieRating !== null && movieRating !== '' ? parseFloat(movieRating).toFixed(1) : "N/A"}</span>
                     </div>
                 </div>
 

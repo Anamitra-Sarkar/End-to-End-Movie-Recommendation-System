@@ -23,9 +23,6 @@ export interface WatchlistMovie {
 }
 
 export async function addToWatchlist(userId: string, movie: Omit<WatchlistMovie, 'addedAt'>) {
-    if (!db) throw new Error('Firestore not initialized');
-    
-    // Use movie ID as document ID (assumes numeric movie IDs from TMDB API)
     const docRef = doc(db, 'users', userId, 'watchlist', String(movie.id));
     await setDoc(docRef, {
         ...movie,
@@ -34,20 +31,15 @@ export async function addToWatchlist(userId: string, movie: Omit<WatchlistMovie,
 }
 
 export async function removeFromWatchlist(userId: string, movieId: number) {
-    if (!db) throw new Error('Firestore not initialized');
-    
     const docRef = doc(db, 'users', userId, 'watchlist', String(movieId));
     await deleteDoc(docRef);
 }
 
 export async function getWatchlist(userId: string): Promise<WatchlistMovie[]> {
-    if (!db) throw new Error('Firestore not initialized');
-    
     const watchlistRef = collection(db, 'users', userId, 'watchlist');
     const q = query(watchlistRef, orderBy('addedAt', 'desc'));
     const snapshot = await getDocs(q);
     
-    // Convert document ID back to numeric movie ID (TMDB uses numeric IDs)
     return snapshot.docs.map((doc) => ({
         ...doc.data(),
         id: parseInt(doc.id, 10),
@@ -56,8 +48,6 @@ export async function getWatchlist(userId: string): Promise<WatchlistMovie[]> {
 }
 
 export async function isInWatchlist(userId: string, movieId: number): Promise<boolean> {
-    if (!db) throw new Error('Firestore not initialized');
-    
     const docRef = doc(db, 'users', userId, 'watchlist', String(movieId));
     const docSnap = await getDoc(docRef);
     return docSnap.exists();
@@ -69,19 +59,12 @@ export function subscribeToWatchlist(
     callback: (movies: WatchlistMovie[]) => void,
     onError?: (error: Error) => void
 ): Unsubscribe {
-    if (!db) {
-        const error = new Error('Firestore not initialized');
-        if (onError) onError(error);
-        return () => {};
-    }
-    
     const watchlistRef = collection(db, 'users', userId, 'watchlist');
     const q = query(watchlistRef, orderBy('addedAt', 'desc'));
     
     return onSnapshot(
         q,
         (snapshot) => {
-            // Convert document ID back to numeric movie ID (TMDB uses numeric IDs)
             const movies = snapshot.docs.map((doc) => ({
                 ...doc.data(),
                 id: parseInt(doc.id, 10),

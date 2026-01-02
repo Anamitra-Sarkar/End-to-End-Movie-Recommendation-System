@@ -35,12 +35,6 @@ export function subscribeToCommunityPosts(
   onError?: (error: Error) => void,
   maxPosts: number = 50
 ): Unsubscribe {
-  if (!db || !auth) {
-    const error = new Error('Firebase not initialized');
-    onError?.(error);
-    return () => {};
-  }
-
   let unsubscribe: Unsubscribe = () => {};
 
   const stopAuthListener = onAuthStateChanged(auth, (user) => {
@@ -98,8 +92,6 @@ export function subscribeToCommunityPosts(
 export async function addCommunityPost(
   post: Omit<CommunityPost, 'id' | 'likes' | 'replies' | 'createdAt'>
 ) {
-  if (!db || !auth) throw new Error('Firebase not initialized');
-
   const user = auth.currentUser;
   if (!user) throw new Error('User not authenticated');
 

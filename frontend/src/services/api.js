@@ -51,3 +51,15 @@ export const getRecommendations = async (movieTitle) => {
         throw error;
     }
 };
+
+export const searchMovieByTitle = async (title) => {
+    try {
+        const response = await api.get('/api/movies', { 
+            params: { search: title, limit: 1 } 
+        });
+        return response.data.movies?.[0] || null;
+    } catch (error) {
+        console.error(`Error searching for movie "${title}":`, error);
+        return null;
+    }
+};

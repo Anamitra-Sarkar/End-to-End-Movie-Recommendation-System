@@ -213,7 +213,7 @@ export default function MovieDetailsPage({ params }) {
 
                         <div className="flex items-center flex-wrap gap-4">
                             <button className="flex items-center gap-3 px-8 py-4 bg-primary hover:bg-primary/90 text-white rounded-2xl font-bold text-lg transition-transform active:scale-95 shadow-lg shadow-primary/25">
-                                <Play fill="currentColor" /> Watch Now
+                                <Play fill="currentColor" /> Coming Soon
                             </button>
                             <button
                                 onClick={toggleWatchlist}
@@ -254,7 +254,7 @@ export default function MovieDetailsPage({ params }) {
                             </h3>
                             <div className="flex flex-wrap gap-4">
                                 <div className="p-4 bg-card rounded-xl border border-white/5 w-full">
-                                    <p className="text-text-secondary italic">Cast information coming soon via data pipeline update.</p>
+                                    <p className="text-text-secondary italic">Stay tuned for the full cast lineup.</p>
                                 </div>
                             </div>
                         </section>
